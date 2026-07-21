@@ -49,3 +49,9 @@ Product extraction tries JSON-LD first (`extractFromJsonLd()`), then falls back 
 - API token stored in `chrome.storage.local` as `sift_token`
 - No environment variables — API URL is hardcoded in `src/lib/sift-api.ts`
 - `sharp` is a devDependency (likely for icon processing during build)
+
+### Markdowns
+
+- `/home/wsl/Projects/markdowns/Sift Project/Extension/CONTEXT.md` — full architecture, API ref, data model, critical flows
+- `/home/wsl/Projects/markdowns/Sift Project/Extension/CHANGES.md` — change log convention
+- `/home/wsl/Projects/markdowns/Sift Project/DESIGN.md` — design system spec
