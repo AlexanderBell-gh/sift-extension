@@ -5,6 +5,7 @@ interface JsonLdOffer {
   price?: string;
   priceCurrency?: string;
   url?: string;
+  priceValidUntil?: string;
 }
 
 interface JsonLdProduct {
@@ -14,6 +15,7 @@ interface JsonLdProduct {
   sku?: string;
   gtin13?: string;
   brand?: { name?: string };
+  category?: string;
   offers?: JsonLdOffer | JsonLdOffer[];
   description?: string;
 }
@@ -24,21 +26,37 @@ function parsePrice(text: string | undefined | null): number | null {
   return match ? parseFloat(match[1]) : null;
 }
 
-function getText(selectors: string[]): string | null {
+function getProductRoot(): HTMLElement | Document {
+  const sel = document.querySelector<HTMLElement>(
+    'main, [role="main"], article, .product-detail, [data-auto="product-detail"], [data-testid="product-detail"]'
+  );
+  return sel || document;
+}
+
+function qs<K extends HTMLElement>(sel: string, root: ParentNode): K | null {
+  return root.querySelector<K>(sel);
+}
+
+function qsa<K extends HTMLElement>(sel: string, root: ParentNode): NodeListOf<K> {
+  return root.querySelectorAll<K>(sel);
+}
+
+function getText(selectors: string[], root: ParentNode = document): string | null {
   for (const sel of selectors) {
-    const el = document.querySelector<HTMLElement>(sel);
+    const el = qs<HTMLElement>(sel, root);
     if (el?.textContent?.trim()) return el.textContent.trim();
   }
   return null;
 }
 
-function getLoyaltyPriceByPattern(): string | null {
+function getLoyaltyPriceByPattern(root: ParentNode = document): string | null {
   const patterns = [
     /(?:nectar|clubcard|member|loyalty|more\s*card|partner)\s*(?:price|saving)?[:\s]*£?\s*(\d+\.?\d*)/i,
     /£\s*(\d+\.?\d*)\s*(?:with|when you use|using)\s*(?:nectar|clubcard|member|loyalty)/i,
   ];
-  const candidates = document.querySelectorAll<HTMLElement>(
-    '[class*="price"], [class*="loyalty"], [class*="member"], [class*="nectar"], [class*="clubcard"], [data-testid*="price"], [data-testid*="loyalty"]'
+  const candidates = qsa<HTMLElement>(
+    '[class*="price"], [class*="loyalty"], [class*="member"], [class*="nectar"], [class*="clubcard"], [data-testid*="price"], [data-testid*="loyalty"]',
+    root
   );
   for (const el of candidates) {
     const text = el.textContent || '';
@@ -51,11 +69,28 @@ function getLoyaltyPriceByPattern(): string | null {
 }
 
 function extractOfferExpiry(): string | null {
+  const dateShort = /\d{1,2}\s+\w+\s+\d{4}/;
+
+  const sainsburysEl = document.querySelector<HTMLElement>('.expiry-date');
+  if (sainsburysEl?.textContent) {
+    const match = sainsburysEl.textContent.trim().match(dateShort);
+    if (match) return match[0];
+  }
+
+  const tescoSel = '.ddsweb-value-bar__terms, [class*="value-bar__terms"], [class*="termsText"]';
+  const tescoEls = document.querySelectorAll<HTMLElement>(tescoSel);
+  for (const el of tescoEls) {
+    const text = el.textContent?.trim() || '';
+    const match = text.match(/until\s+(\d{2}\/\d{2}\/\d{4})/);
+    if (match) return match[1];
+  }
+
   const patterns = [
-    /until:\s*(\d{1,2}\s+\w+\s+\d{4})/i,
-    /expires?:\s*(\d{1,2}\s+\w+\s+\d{4})/i,
-    /valid until\s*(\d{1,2}\s+\w+\s+\d{4})/i,
-    /ends?\s*(\d{1,2}\s+\w+\s+\d{4})/i,
+    /until\s+(\d{2}\/\d{2}\/\d{4})/,
+    new RegExp('until[\\s:]\\s*(' + dateShort.source + ')', 'i'),
+    new RegExp('expires?[\\s:]\\s*(' + dateShort.source + ')', 'i'),
+    new RegExp('valid until[\\s:]\\s*(' + dateShort.source + ')', 'i'),
+    new RegExp('ends?[\\s:]\\s*(' + dateShort.source + ')', 'i'),
   ];
   const candidates = document.querySelectorAll<HTMLElement>(
     '[class*="offer"], [class*="promotion"], [class*="expiry"], [class*="terms"], [data-testid*="offer"], [data-testid*="promotion"], p, span, div'
@@ -70,13 +105,49 @@ function extractOfferExpiry(): string | null {
   return null;
 }
 
-function getAttr(selectors: string[], attr: string): string | null {
+function getAttr(selectors: string[], attr: string, root: ParentNode = document): string | null {
   for (const sel of selectors) {
-    const el = document.querySelector<HTMLElement>(sel);
+    const el = qs<HTMLElement>(sel, root);
     const val = el?.getAttribute(attr);
     if (val) return val;
   }
   return null;
+}
+
+// Category conversion
+const CATEGORY_MAP: Record<string, string> = {
+  'Low Fat & Fat Free Yogurt': 'Chilled',
+  'Natural, organic & greek yogurt': 'Chilled',
+  'Eggs': 'Food Cupboard',
+  'Crackers': 'Food Cupboard',
+  'Doughnuts and cookies': 'Food Cupboard',
+  'Milk': 'Chilled',
+  'Berries & Cherries': 'Chilled',
+  'Ice cream tubs': 'Frozen',
+};
+
+function normalizeCategory(raw: string): string {
+  const cleaned = raw.replace(/^Back to\s+/i, '');
+  return CATEGORY_MAP[cleaned] || cleaned;
+}
+
+function extractCategory(root: ParentNode = document): string | null {
+  const selectors = [
+    '[data-auto="breadcrumb"] a',
+    '[data-testid="breadcrumb"] a',
+    'nav[aria-label="breadcrumb"] a',
+    '.breadcrumbs a',
+    '.breadcrumb a',
+    'ol[class*="breadcrumb"] a',
+  ];
+  const links = qsa<HTMLElement>(selectors.join(','), root);
+  const crumbs: string[] = [];
+  for (const link of links) {
+    const text = link.textContent?.trim();
+    if (text) crumbs.push(text);
+  }
+  const raw = crumbs.length > 0 ? crumbs[crumbs.length - 1] : null;
+  return raw ? normalizeCategory(raw) : null;
 }
 
 function extractFromJsonLd(): Partial<ExtractedProduct> | null {
@@ -93,6 +164,8 @@ function extractFromJsonLd(): Partial<ExtractedProduct> | null {
           price: parsePrice(offers?.price),
           image_url: image || null,
           product_url: offers?.url || window.location.href,
+          offer_expires_at: offers?.priceValidUntil || null,
+          category: product.category || null,
         };
       }
     } catch {
@@ -103,6 +176,8 @@ function extractFromJsonLd(): Partial<ExtractedProduct> | null {
 }
 
 function extractFromDom(): Partial<ExtractedProduct> {
+  const root = getProductRoot();
+
   const priceText = getText([
     '[data-auto="price-per-quantity-weight"]',
     '.price-main__integer',
@@ -112,7 +187,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '[data-testid="pd-retail-price"]',
     '.pd__cost__retail-price',
     '.online-components-product-tile-price__text',
-  ]);
+  ], root);
 
   const wasPriceText = getText([
     '[data-auto="was-price"]',
@@ -120,7 +195,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '.product-price--previous',
     '.pt__cost__retail-price--was',
     '[data-testid="was-price"]',
-  ]);
+  ], root);
 
   const loyaltyPriceText = getText([
     '[data-auto="clubcard-price"]',
@@ -144,7 +219,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '[data-testid*="partner"]',
     '[class*="asda-price"]',
     '[data-testid*="reduced"]',
-  ]) || getLoyaltyPriceByPattern();
+  ], root) || getLoyaltyPriceByPattern(root);
 
   const offerBadge = getText([
     '[data-auto="promotion-badge"]',
@@ -152,20 +227,20 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '.offer-text',
     '.promotion-banner',
     '[data-testid="promotion-badge"]',
-  ]);
+  ], root);
 
   const imageUrl = getAttr([
     'img[data-auto="product-image"]',
     '.product-image img',
     'img[src*="digitalcontent.api.tesco.com"]',
     '[data-testid="product-tile-image"] img',
-  ], 'src');
+  ], 'src', root);
 
   const title = getText([
     'h1',
     '[data-auto="product-title"]',
     '[data-testid="product-tile-title"]',
-  ]);
+  ], root);
 
   return {
     name: title,
@@ -176,6 +251,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     offer_expires_at: extractOfferExpiry(),
     image_url: imageUrl,
     product_url: window.location.href,
+    category: extractCategory(root),
   };
 }
 
@@ -230,9 +306,10 @@ export function extractProduct(): ExtractedProduct | null {
     loyalty_price: dom.loyalty_price ?? null,
     was_price: dom.was_price ?? null,
     offer_badge: dom.offer_badge ?? null,
-    offer_expires_at: dom.offer_expires_at ?? null,
+    offer_expires_at: dom.offer_expires_at ?? jsonLd?.offer_expires_at ?? null,
     image_url: jsonLd?.image_url ?? dom.image_url ?? null,
     product_url: jsonLd?.product_url || dom.product_url || window.location.href,
+    category: dom.category ?? jsonLd?.category ?? null,
     store: store.name,
     store_logo: store.logo,
     unit: null,
