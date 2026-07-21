@@ -1,0 +1,16 @@
+{
+  "name": "sift-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt dev",
+    "build": "wxt build",
+    "zip": "wxt zip"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.3",
+    "typescript": "^5.9.3",
+    "wxt": "^0.20.27"
+  }
+}
