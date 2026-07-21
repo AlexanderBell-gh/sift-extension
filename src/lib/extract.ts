@@ -124,6 +124,7 @@ const CATEGORY_MAP: Record<string, string> = {
   'Milk': 'Chilled',
   'Berries & Cherries': 'Chilled',
   'Ice cream tubs': 'Frozen',
+  'Lettuce': 'Produce',
 };
 
 function normalizeCategory(raw: string): string {

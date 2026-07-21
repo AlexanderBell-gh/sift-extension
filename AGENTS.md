@@ -40,7 +40,13 @@ No lint, test, typecheck, or formatter commands exist.
 
 ### Extraction Strategy
 
-Product extraction tries JSON-LD first (`extractFromJsonLd()`), then falls back to DOM selectors (`extractFromDom()`). DOM selectors are store-specific and fragile — they break when stores redesign their pages.
+Product extraction runs both JSON-LD (`extractFromJsonLd()`) and DOM (`extractFromDom()`), merging results with DOM priority. DOM queries scoped to `<main>`/primary content container via `getProductRoot()` to avoid cross-product contamination.
+
+**Fields:**
+- `category` — extracted from DOM breadcrumbs last link, normalized via `CATEGORY_MAP`. Also from JSON-LD `category` field.
+- `offer_expires_at` — direct selectors per store (`.expiry-date` Sainsbury's, `.ddsweb-value-bar__terms` Tesco), broad sweep with `until DD/MM/YYYY` priority. Also from JSON-LD `priceValidUntil`.
+
+DOM selectors are store-specific and fragile — they break when stores redesign their pages.
 
 ## Development Notes
 
