@@ -17,6 +17,14 @@ export default defineContentScript({
     'https://siftsearch.pages.dev/*',
   ],
   main() {
+    if (window.location.hostname === 'siftsearch.pages.dev') {
+      const meta = document.createElement('meta');
+      meta.name = 'sift-extension';
+      meta.content = 'installed';
+      document.head.appendChild(meta);
+      window.postMessage({ type: 'SIFT_EXTENSION_INSTALLED' }, '*');
+    }
+
     chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       if (request.action === 'extract') {
         const product = extractProduct();
