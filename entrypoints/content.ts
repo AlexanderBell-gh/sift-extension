@@ -15,9 +15,10 @@ export default defineContentScript({
     'https://www.iceland.co.uk/*',
     'https://www.ocado.com/*',
     'https://siftsearch.pages.dev/*',
+    'http://localhost:5173/*'
   ],
   main() {
-    if (window.location.hostname === 'siftsearch.pages.dev') {
+    if (window.location.hostname === 'siftsearch.pages.dev', 'http://localhost:5173') {
       const meta = document.createElement('meta');
       meta.name = 'sift-extension';
       meta.content = 'installed';
