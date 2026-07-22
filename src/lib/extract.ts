@@ -22,7 +22,10 @@ interface JsonLdProduct {
 
 function parsePrice(text: string | undefined | null): number | null {
   if (!text) return null;
-  const match = text.replace(/,/g, '').match(/(\d+\.?\d*)/);
+  const cleaned = text.replace(/,/g, '');
+  const pence = cleaned.match(/(\d+)p\b/i);
+  if (pence && !cleaned.includes('\u00A3')) return parseFloat(pence[1]) / 100;
+  const match = cleaned.match(/(\d+\.?\d*)/);
   return match ? parseFloat(match[1]) : null;
 }
 

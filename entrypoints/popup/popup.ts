@@ -215,10 +215,24 @@ function renderProduct(product: ExtractedProduct) {
         </div>
         <div class="success">Added to watchlist!</div>
       `;
+    } else if (result.blocked) {
+      app.innerHTML = `
+        <div class="header">
+          ${SIFT_LOGO}
+          <h1>Sift</h1>
+        </div>
+        <div class="blocked">
+          <div class="blocked-icon">!</div>
+          <div class="blocked-title">Watchlist full</div>
+          <p class="blocked-text">Trial accounts are limited to 5 items.</p>
+          <p class="blocked-text">Remove old items on your <a href="https://siftsearch.pages.dev/watchlist" target="_blank">Watchlist</a> to add more.</p>
+          <button class="btn btn-secondary" id="back-btn">Back</button>
+        </div>
+      `;
+      document.getElementById('back-btn')!.addEventListener('click', () => renderProduct(product));
     } else {
       btn.disabled = false;
       btn.textContent = 'Add to Watchlist';
-      alert(result.error || 'Failed to add');
     }
   });
 

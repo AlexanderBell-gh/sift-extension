@@ -15,7 +15,7 @@ function hashString(str: string): string {
 export async function addToWatchlist(
   token: string,
   product: ExtractedProduct
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; blocked?: boolean }> {
   const id = hashString(`${product.store}_${product.name}`);
 
   const loyaltyTypeMap: Record<string, string> = {
@@ -58,8 +58,11 @@ export async function addToWatchlist(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    return { success: false, error: error.error || 'Failed to add to watchlist' };
+    const body = await response.json().catch(() => ({}));
+    if (body.reason === 'watchlist_limit') {
+      return { success: false, blocked: true, error: 'Trial accounts are limited to 5 watchlist items. Remove some items on siftsearch.pages.dev to add more.' };
+    }
+    return { success: false, error: body.error || 'Failed to add to watchlist' };
   }
 
   return { success: true };
