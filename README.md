@@ -35,4 +35,15 @@ Output: `.output/chrome-mv3/`
 
 - `activeTab` — access current tab's content
 - `storage` — persist login token
-- Host permissions for all 11 supported store domains + Sift API
+- `tabs` — query for siftsearch.pages.dev tabs to link website session
+- Host permissions for 11 store domains + Sift API + siftsearch.pages.dev
+
+## Auth
+
+- **Login:** username + password via `POST /api/auth/login`
+- **Link account:** "Link Sift Account" button reads `auth_token` from siftsearch.pages.dev's localStorage via content script
+- **Token stored** in `chrome.storage.local` as `sift_token`
+
+## Trial Users
+
+Trial accounts are limited to 5 watchlist items. When full, the extension shows a blocked screen with a link to manage items on your Watchlist page.
