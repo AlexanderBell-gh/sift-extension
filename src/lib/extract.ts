@@ -68,13 +68,32 @@ function getLoyaltyPriceByPattern(root: ParentNode = document): string | null {
   return null;
 }
 
+function toISODate(raw: string): string {
+  const slash = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (slash) return `${slash[3]}-${slash[2]}-${slash[1]}`;
+
+  const months: Record<string, string> = {
+    january:'01',february:'02',march:'03',april:'04',may:'05',june:'06',
+    july:'07',august:'08',september:'09',october:'10',november:'11',december:'12',
+    jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',
+    jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12',
+  };
+  const text = raw.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})$/);
+  if (text) {
+    const m = months[text[2].toLowerCase()];
+    if (m) return `${text[3]}-${m}-${String(text[1]).padStart(2, '0')}`;
+  }
+
+  return raw;
+}
+
 function extractOfferExpiry(): string | null {
   const dateShort = /\d{1,2}\s+\w+\s+\d{4}/;
 
   const sainsburysEl = document.querySelector<HTMLElement>('.expiry-date');
   if (sainsburysEl?.textContent) {
     const match = sainsburysEl.textContent.trim().match(dateShort);
-    if (match) return match[0];
+    if (match) return toISODate(match[0]);
   }
 
   const tescoSel = '.ddsweb-value-bar__terms, [class*="value-bar__terms"], [class*="termsText"]';
@@ -82,7 +101,7 @@ function extractOfferExpiry(): string | null {
   for (const el of tescoEls) {
     const text = el.textContent?.trim() || '';
     const match = text.match(/until\s+(\d{2}\/\d{2}\/\d{4})/);
-    if (match) return match[1];
+    if (match) return toISODate(match[1]);
   }
 
   const patterns = [
@@ -99,7 +118,7 @@ function extractOfferExpiry(): string | null {
     const text = el.textContent || '';
     for (const pattern of patterns) {
       const match = text.match(pattern);
-      if (match) return match[1];
+      if (match) return toISODate(match[1]);
     }
   }
   return null;
