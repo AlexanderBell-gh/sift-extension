@@ -2,7 +2,7 @@ import { defineConfig } from 'wxt';
 
 export default defineConfig({
   manifest: {
-    name: 'Sift — Grocery Price Tracker',
+    name: 'Sift - Product Extractor',
     description: 'Extract product data from UK supermarkets and add to your Sift watchlist.',
     permissions: ['activeTab', 'storage', 'tabs'],
     host_permissions: [
