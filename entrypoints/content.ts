@@ -14,12 +14,17 @@ export default defineContentScript({
     'https://www.waitrose.com/*',
     'https://www.iceland.co.uk/*',
     'https://www.ocado.com/*',
+    'https://siftsearch.pages.dev/*',
   ],
   main() {
     chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       if (request.action === 'extract') {
         const product = extractProduct();
         sendResponse({ product });
+      }
+      if (request.action === 'getToken') {
+        const token = localStorage.getItem('auth_token');
+        sendResponse({ token });
       }
       return true;
     });

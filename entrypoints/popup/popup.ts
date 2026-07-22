@@ -55,6 +55,8 @@ function renderLogin() {
       <input id="password" type="password" placeholder="Password" />
       <div id="login-error" class="error-msg"></div>
       <button class="btn btn-primary" id="login-btn">Sign In</button>
+      <div class="divider"><span>or</span></div>
+      <button class="btn btn-link" id="link-btn">Link Sift Account</button>
     </div>
   `;
 
@@ -77,6 +79,39 @@ function renderLogin() {
       token = result.token;
       await chrome.storage.local.set({ sift_token: token });
       init();
+    }
+  });
+
+  document.getElementById('link-btn')!.addEventListener('click', async () => {
+    const btn = document.getElementById('link-btn') as HTMLButtonElement;
+    const errorEl = document.getElementById('login-error')!;
+    btn.disabled = true;
+    btn.textContent = 'Linking...';
+    errorEl.textContent = '';
+
+    const tabs = await chrome.tabs.query({ url: 'https://siftsearch.pages.dev/*' });
+    if (tabs.length === 0) {
+      errorEl.textContent = 'Open siftsearch.pages.dev first and sign in.';
+      btn.disabled = false;
+      btn.textContent = 'Link Sift Account';
+      return;
+    }
+
+    try {
+      const response = await chrome.tabs.sendMessage(tabs[0].id!, { action: 'getToken' });
+      if (response?.token) {
+        token = response.token;
+        await chrome.storage.local.set({ sift_token: token });
+        init();
+      } else {
+        errorEl.textContent = 'No session found on siftsearch.pages.dev. Sign in there first.';
+        btn.disabled = false;
+        btn.textContent = 'Link Sift Account';
+      }
+    } catch {
+      errorEl.textContent = 'Cannot reach siftsearch.pages.dev. Reload the page and try again.';
+      btn.disabled = false;
+      btn.textContent = 'Link Sift Account';
     }
   });
 }

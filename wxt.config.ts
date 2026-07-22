@@ -4,7 +4,7 @@ export default defineConfig({
   manifest: {
     name: 'Sift — Grocery Price Tracker',
     description: 'Extract product data from UK supermarkets and add to your Sift watchlist.',
-    permissions: ['activeTab', 'storage'],
+    permissions: ['activeTab', 'storage', 'tabs'],
     host_permissions: [
       'https://www.tesco.com/*',
       'https://www.sainsburys.co.uk/*',
@@ -18,6 +18,7 @@ export default defineConfig({
       'https://www.iceland.co.uk/*',
       'https://www.ocado.com/*',
       'https://siftapi.blackmesa.workers.dev/*',
+      'https://siftsearch.pages.dev/*',
     ],
     action: {
       default_popup: 'popup.html',
