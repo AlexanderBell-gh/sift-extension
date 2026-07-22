@@ -55,6 +55,7 @@ DOM selectors are store-specific and fragile — they break when stores redesign
 - API token stored in `chrome.storage.local` as `sift_token`
 - No environment variables — API URL is hardcoded in `src/lib/sift-api.ts`
 - `sharp` is a devDependency (likely for icon processing during build)
+- CHANGES.md: log every change with file + line numbers (see /home/wsl/Projects/markdowns/Sift Project/Extension/CHANGES.md)
 
 ### Markdowns
 
