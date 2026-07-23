@@ -23,11 +23,12 @@ No lint, test, typecheck, or formatter commands exist.
 
 ### Key Files
 
-- `entrypoints/content.ts` — Content script injected into 12 domains (11 stores + siftsearch.pages.dev). Handles `extract` and `getToken` messages.
+- `entrypoints/background.ts` — Service worker. `chrome.runtime.onInstalled` → force-injects presence signal into existing siftsearch.pages.dev tabs.
+- `entrypoints/content.ts` — Content script injected into 13 domains (11 stores + siftsearch.pages.dev + localhost:5173). Handles `extract` and `getToken` messages. Signals presence via meta tag + postMessage + CustomEvent.
 - `entrypoints/popup/popup.ts` — Popup UI. Login with "Link Sift Account" button, product display, "Add to Watchlist".
 - `src/lib/extract.ts` — Product extraction. DOM selectors + JSON-LD fallback. `toISODate()` for dates, `parsePrice()` with pence support.
 - `src/lib/sift-api.ts` — API client. Auth, trial linking, watchlist additions (`watchlist_limit` detection).
-- `wxt.config.ts` — Manifest (permissions: `activeTab`, `storage`, `tabs`; host_permissions: 11 stores + API + siftsearch.pages.dev).
+- `wxt.config.ts` — Manifest (permissions: `activeTab`, `storage`, `tabs`, `scripting`; host_permissions: 11 stores + API + siftsearch.pages.dev + localhost:5173).
 - `src/types.ts` — `ExtractedProduct` type.
 
 ### Store Detection

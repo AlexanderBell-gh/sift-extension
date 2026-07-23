@@ -34,7 +34,8 @@ Output: `.output/chrome-mv3/`
 - `activeTab` — access current tab's product data
 - `storage` — persist login token
 - `tabs` — query for siftsearch.pages.dev tabs to link website session
-- Host permissions for 11 store domains + Sift API + siftsearch.pages.dev
+- `scripting` — force-inject presence signal into existing tabs on install
+- Host permissions for 11 store domains + Sift API + siftsearch.pages.dev + localhost:5173
 
 ## Auth
 
