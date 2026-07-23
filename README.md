@@ -1,6 +1,6 @@
 # Sift Extension
 
-Chrome MV3 browser extension for [Sift](https://siftsearch.pages.dev) — UK supermarket price tracker. Extracts product data from store pages and adds to your Sift watchlist.
+Chrome MV3 browser extension for [Sift](https://siftsearch.pages.dev) — UK supermarket offer tracker. Extracts product data from store pages and adds to your Sift watchlist.
 
 ## Install
 
