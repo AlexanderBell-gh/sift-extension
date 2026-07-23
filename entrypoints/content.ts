@@ -18,12 +18,13 @@ export default defineContentScript({
     'http://localhost:5173/*'
   ],
   main() {
-    if (window.location.hostname === 'siftsearch.pages.dev', 'http://localhost:5173') {
+    if (window.location.hostname === 'siftsearch.pages.dev' || window.location.hostname === 'localhost') {
       const meta = document.createElement('meta');
       meta.name = 'sift-extension';
       meta.content = 'installed';
       document.head.appendChild(meta);
       window.postMessage({ type: 'SIFT_EXTENSION_INSTALLED' }, '*');
+      document.dispatchEvent(new CustomEvent('sift-extension-installed'));
     }
 
     chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {

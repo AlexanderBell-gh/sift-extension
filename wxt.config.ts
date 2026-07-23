@@ -4,7 +4,7 @@ export default defineConfig({
   manifest: {
     name: 'Sift - Product Extractor',
     description: 'Extract product data from UK supermarkets and add to your Sift watchlist.',
-    permissions: ['activeTab', 'storage', 'tabs'],
+    permissions: ['activeTab', 'storage', 'tabs', 'scripting'],
     host_permissions: [
       'https://www.tesco.com/*',
       'https://www.sainsburys.co.uk/*',
@@ -19,6 +19,7 @@ export default defineConfig({
       'https://www.ocado.com/*',
       'https://siftapi.blackmesa.workers.dev/*',
       'https://siftsearch.pages.dev/*',
+      'http://localhost:5173/*',
     ],
     action: {
       default_popup: 'popup.html',
