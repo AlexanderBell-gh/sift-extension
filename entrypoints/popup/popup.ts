@@ -4,7 +4,7 @@ import { addToWatchlist, login } from '../../src/lib/sift-api';
 const SIFT_LOGO = `<svg class="header-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
   <g transform="rotate(-10 16 16)">
     <rect x="6" y="2" width="20" height="28" rx="4" fill="#FF5701"/>
-    <circle cx="16" cy="9" r="3" fill="white"/>
+    <circle cx="16" cy="9" r="3" fill="background"/>
   </g>
 </svg>`;
 
@@ -56,7 +56,7 @@ function renderLogin() {
       <div id="login-error" class="error-msg"></div>
       <button class="btn btn-primary" id="login-btn">Sign In</button>
       <div class="divider"><span>or</span></div>
-      <button class="btn btn-link" id="link-btn">Link Sift Account</button>
+      <button class="btn btn-link" id="link-btn">Click here for Trial Users</button>
     </div>
   `;
 
@@ -93,7 +93,7 @@ function renderLogin() {
     if (tabs.length === 0) {
       errorEl.textContent = 'Open siftsearch.pages.dev first and sign in.';
       btn.disabled = false;
-      btn.textContent = 'Link Sift Account';
+      btn.textContent = 'Click here for Trial Users';
       return;
     }
 
@@ -106,12 +106,12 @@ function renderLogin() {
       } else {
         errorEl.textContent = 'No session found on siftsearch.pages.dev. Sign in there first.';
         btn.disabled = false;
-        btn.textContent = 'Link Sift Account';
+        btn.textContent = 'Click here for Trial Users';
       }
     } catch {
       errorEl.textContent = 'Cannot reach siftsearch.pages.dev. Reload the page and try again.';
       btn.disabled = false;
-      btn.textContent = 'Link Sift Account';
+      btn.textContent = 'Click here for Trial Users';
     }
   });
 }

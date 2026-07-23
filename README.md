@@ -40,7 +40,7 @@ Output: `.output/chrome-mv3/`
 ## Auth
 
 - **Login:** username + password via Sift API
-- **Link account:** "Link Sift Account" button reads token from siftsearch.pages.dev's localStorage via content script
+- **Link account:** "Click here for Trial Users" button reads token from a logged in trial user in siftsearch.pages.dev's localStorage via content script
 - **Token stored** in `chrome.storage.local` as `sift_token`
 
 ## Trial Users
