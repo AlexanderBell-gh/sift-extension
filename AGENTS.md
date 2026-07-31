@@ -3,7 +3,7 @@
 ## Important
 
 - Always activate caveman full, before anything else
-- Always update `CHANGELOG.md` after a change so it can be tracked
+- Always update `CHANGELOG.md` after a change so it can be tracked - see in Markdowns
 
 ## Project Overview
 
@@ -49,6 +49,9 @@ JSON-LD + DOM merge, DOM priority. Scoped to `<main>` via `getProductRoot()`. St
 - Output: `.output/chrome-mv3/`. Load unpacked via `chrome://extensions` → Developer mode.
 - Token stored in `chrome.storage.local` as `sift_token`. API URL hardcoded in `sift-api.ts`.
 - `sharp` is a devDependency (icon processing).
-- Log changes in CHANGES.md (see `/home/wsl/Projects/markdowns/Sift Project/Extension/CHANGES.md`).
+
+## Markdowns
+
+- Log every change with file + line numbers `/home/wsl/Projects/markdowns/Sift Project/Extension/CHANGELOG.md`
 - Full context: `/home/wsl/Projects/markdowns/Sift Project/Extension/CONTEXT.md`
 - Design tokens: `/home/wsl/Projects/markdowns/Sift Project/DESIGN.md`
