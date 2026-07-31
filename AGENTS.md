@@ -2,7 +2,7 @@
 
 ## Important
 
-- Always activate caveman full, before anything else
+- Before anything else make sure to activate the skill caveman full
 - Always update `CHANGELOG.md` after a change so it can be tracked - see in Markdowns
 
 ## Project Overview
