@@ -1,5 +1,10 @@
 # AGENTS.md
 
+## Important
+
+- Always activate caveman full, before anything else
+- Always update `CHANGELOG.md` after a change so it can be tracked
+
 ## Project Overview
 
 Chrome MV3 browser extension for [Sift](https://siftsearch.pages.dev) — UK supermarket price tracker. Extracts product data from store pages and adds to your Sift watchlist.
