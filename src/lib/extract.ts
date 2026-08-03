@@ -1,4 +1,5 @@
 import type { ExtractedProduct } from '../types';
+import { normalizeCategory } from './category-map';
 
 interface JsonLdOffer {
   '@type': string;
@@ -134,24 +135,6 @@ function getAttr(selectors: string[], attr: string, root: ParentNode = document)
     if (val) return val;
   }
   return null;
-}
-
-// Category conversion
-const CATEGORY_MAP: Record<string, string> = {
-  'Low Fat & Fat Free Yogurt': 'Chilled',
-  'Natural, organic & greek yogurt': 'Chilled',
-  'Eggs': 'Food Cupboard',
-  'Crackers': 'Food Cupboard',
-  'Doughnuts and cookies': 'Food Cupboard',
-  'Milk': 'Chilled',
-  'Berries & Cherries': 'Chilled',
-  'Ice cream tubs': 'Frozen',
-  'Lettuce': 'Produce',
-};
-
-function normalizeCategory(raw: string): string {
-  const cleaned = raw.replace(/^Back to\s+/i, '');
-  return CATEGORY_MAP[cleaned] || cleaned;
 }
 
 function extractCategory(root: ParentNode = document): string | null {
