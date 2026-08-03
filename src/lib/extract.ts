@@ -137,6 +137,19 @@ function getAttr(selectors: string[], attr: string, root: ParentNode = document)
   return null;
 }
 
+function getAsdaPrice(label: string, root: ParentNode = document): string | null {
+  const container = qs<HTMLElement>('[data-testid="txt-pdp-product-price"]', root);
+  if (!container) return null;
+  const paragraphs = qsa<HTMLElement>('p', container);
+  for (const p of paragraphs) {
+    const span = qs<HTMLElement>('span', p);
+    if (span?.textContent?.trim().toLowerCase() === label) {
+      return p.textContent?.trim() || null;
+    }
+  }
+  return null;
+}
+
 function extractCategory(root: ParentNode = document): string | null {
   const selectors = [
     '[data-auto="breadcrumb"] a',
@@ -145,6 +158,7 @@ function extractCategory(root: ParentNode = document): string | null {
     '.breadcrumbs a',
     '.breadcrumb a',
     'ol[class*="breadcrumb"] a',
+    '.chakra-breadcrumb__list-item a',
   ];
   const links = qsa<HTMLElement>(selectors.join(','), root);
   const crumbs: string[] = [];
@@ -193,7 +207,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '[data-testid="pd-retail-price"]',
     '.pd__cost__retail-price',
     '.online-components-product-tile-price__text',
-  ], root);
+  ], root) || getAsdaPrice('was', root);
 
   const wasPriceText = getText([
     '[data-auto="was-price"]',
@@ -225,7 +239,10 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '[data-testid*="partner"]',
     '[class*="asda-price"]',
     '[data-testid*="reduced"]',
-  ], root) || getLoyaltyPriceByPattern(root);
+    '[data-testid*="asda-price"]',
+    '[class*="price-lock"]',
+    '[data-testid*="price-lock"]',
+  ], root) || getAsdaPrice('actual price', root) || getLoyaltyPriceByPattern(root);
 
   const offerBadge = getText([
     '[data-auto="promotion-badge"]',
@@ -233,6 +250,9 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '.offer-text',
     '.promotion-banner',
     '[data-testid="promotion-badge"]',
+    '[data-testid*="rollback"]',
+    '[class*="rollback"]',
+    '[data-testid*="promo"]',
   ], root);
 
   const imageUrl = getAttr([
@@ -240,12 +260,14 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '.product-image img',
     'img[src*="digitalcontent.api.tesco.com"]',
     '[data-testid="product-tile-image"] img',
+    'img[data-testid="img"]',
   ], 'src', root);
 
   const title = getText([
     'h1',
     '[data-auto="product-title"]',
     '[data-testid="product-tile-title"]',
+    '[data-testid="txt-pdp-product-name"]',
   ], root);
 
   return {

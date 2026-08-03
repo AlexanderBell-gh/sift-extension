@@ -8,7 +8,7 @@ export default defineConfig({
     host_permissions: [
       'https://www.tesco.com/*',
       'https://www.sainsburys.co.uk/*',
-      'https://groceries.asda.com/*',
+      'https://www.asda.com/groceries/*',
       'https://groceries.morrisons.com/*',
       'https://www.marksandspencer.com/*',
       'https://www.aldi.co.uk/*',

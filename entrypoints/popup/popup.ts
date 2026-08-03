@@ -162,6 +162,7 @@ function renderProduct(product: ExtractedProduct) {
   const loyaltyLabelMap: Record<string, string> = {
     'Tesco': 'Clubcard',
     "Sainsbury's": 'Nectar',
+    'ASDA': 'Rollback',
     'Morrisons': 'More Card',
     'Co-op': 'Member',
     'Waitrose': 'My Waitrose',

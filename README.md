@@ -16,7 +16,36 @@ Browse to any supported store → click the extension icon → review product da
 
 ## Supported Stores
 
-Tesco, Sainsbury's, ASDA, Morrisons, M&S, Aldi, Lidl, Co-op, Waitrose, Iceland, Ocado.
+| Store | Extraction | Notes |
+|-------|-----------|-------|
+| Tesco | Full | Clubcard price |
+| Sainsbury's | Full | Nectar price |
+| ASDA | Full | Rollback promotions |
+| Morrisons | Partial | More Card price |
+| M&S | Partial | — |
+| Aldi | Partial | — |
+| Lidl | Partial | — |
+| Co-op | Partial | Member price |
+| Waitrose | Partial | My Waitrose price |
+| Iceland | Partial | — |
+| Ocado | Partial | — |
+
+## Category Mapping
+
+Raw breadcrumb text from store pages is normalized into target categories:
+
+| Category | Keyword matches |
+|----------|----------------|
+| Chilled | yogurt, milk, cheese, cream, dairy, eggs |
+| Snacks | crisps, nuts, bars, chocolate, biscuits |
+| Beverages | drinks, juice, tea, coffee, beer, wine |
+| Produce | fruit, vegetables, salad, lettuce |
+| Frozen | frozen, ice cream |
+| Bakery | bread, cakes, pastries, doughnuts |
+| Food Cupboard | pasta, rice, tins, sauces, cereal |
+| Other | unmatched fallback |
+
+See `src/lib/category-map.ts` for full keyword lists and exact-match overrides.
 
 ## Development
 
