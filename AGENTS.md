@@ -3,7 +3,8 @@
 ## Important
 
 - Before anything else make sure to activate the skill caveman full
-- Always update `CHANGELOG.md` after a change so it can be tracked - see in Markdowns
+- Always update `CHANGELOG.md` after a change so it can be tracked - location in Markdowns
+- Refer to `CONTEXT.md` if you need further project context - location in Markdowns
 
 ## Project Overview
 
@@ -52,6 +53,6 @@ JSON-LD + DOM merge, DOM priority. Scoped to `<main>` via `getProductRoot()`. St
 
 ## Markdowns
 
-- Log every change with file + line numbers `/home/wsl/Projects/markdowns/Sift Project/Extension/CHANGELOG.md`
-- Full context: `/home/wsl/Projects/markdowns/Sift Project/Extension/CONTEXT.md`
-- Design tokens: `/home/wsl/Projects/markdowns/Sift Project/DESIGN.md`
+- `/home/wsl/Projects/markdowns/Sift Project/Extension/CONTEXT.md` — full architecture, API ref, data model, critical flows
+- `/home/wsl/Projects/markdowns/Sift Project/Extension/CHANGELOG.md` — log for every change with file + line numbers
+- `/home/wsl/Projects/markdowns/Sift Project/DESIGN.md` — Design tokens
