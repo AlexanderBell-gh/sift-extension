@@ -170,6 +170,39 @@ function extractCategory(root: ParentNode = document): string | null {
   return raw ? normalizeCategory(raw) : null;
 }
 
+function extractDealText(root: ParentNode = document): string | null {
+  const pattern = /(\d+)\s*for\s*£?\s*(\d+\.?\d*)/i;
+  const excludeSel = '[class*="carousel"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"]';
+  const priceEl = qs<HTMLElement>(
+    '[data-testid="txt-pdp-product-price"], [class*="product-pricing"], [data-testid*="contextual-price"], [class*="value-bar"]',
+    root
+  );
+  const priceRect = priceEl?.getBoundingClientRect();
+
+  const candidates = qsa<HTMLElement>(
+    '[class*="offer"], [class*="promotion"], [class*="multibuy"], [class*="multi-buy"], [class*="deal"], [data-testid*="offer"], [data-testid*="promotion"], [data-testid*="multi"], [data-locator*="offer"], a[data-locator], p, span, div',
+    root
+  );
+
+  let best: string | null = null;
+  for (const el of candidates) {
+    if (el.closest(excludeSel)) continue;
+    const text = el.textContent?.trim() || '';
+    if (text.length === 0 || text.length > 120) continue;
+    if (!pattern.test(text)) continue;
+
+    const rect = el.getBoundingClientRect();
+    if (priceRect) {
+      const overlap = rect.left < priceRect.right && rect.right > priceRect.left;
+      const centerY = (rect.top + rect.bottom) / 2;
+      const inBand = centerY > priceRect.top - 200 && centerY < priceRect.bottom + 250;
+      if (!overlap || !inBand) continue;
+    }
+    if (!best || text.length < best.length) best = text;
+  }
+  return best;
+}
+
 function extractFromJsonLd(): Partial<ExtractedProduct> | null {
   const scripts = document.querySelectorAll<HTMLScriptElement>('script[type="application/ld+json"]');
   for (const script of scripts) {
@@ -195,19 +228,33 @@ function extractFromJsonLd(): Partial<ExtractedProduct> | null {
   return null;
 }
 
+function getSinglePriceText(root: ParentNode, dealText: string | null): string | null {
+  const selectors = [
+    '[data-testid="pd-retail-price"]',
+    '.pd__cost__retail-price',
+    '.pt__cost__retail-price',
+    '[data-auto="price-per-quantity-weight"]',
+    '.price-main__integer',
+    '[data-testid="product-tile-price"]',
+    '.product-price',
+    '.online-components-product-tile-price__text',
+  ];
+  for (const sel of selectors) {
+    const el = qs<HTMLElement>(sel, root);
+    const text = el?.textContent?.trim();
+    if (!text) continue;
+    if (dealText && dealText.length > 3 && text.includes(dealText)) continue;
+    return text;
+  }
+  return null;
+}
+
 function extractFromDom(): Partial<ExtractedProduct> {
   const root = getProductRoot();
 
-  const priceText = getText([
-    '[data-auto="price-per-quantity-weight"]',
-    '.price-main__integer',
-    '.product-price',
-    '.pt__cost__retail-price',
-    '[data-testid="product-tile-price"]',
-    '[data-testid="pd-retail-price"]',
-    '.pd__cost__retail-price',
-    '.online-components-product-tile-price__text',
-  ], root) || getAsdaPrice('was', root);
+  const dealText = extractDealText(root);
+
+  const priceText = getSinglePriceText(root, dealText) || getAsdaPrice('was', root) || getAsdaPrice('actual price', root);
 
   const wasPriceText = getText([
     '[data-auto="was-price"]',
@@ -244,17 +291,6 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '[data-testid*="price-lock"]',
   ], root) || getAsdaPrice('actual price', root) || getLoyaltyPriceByPattern(root);
 
-  const offerBadge = getText([
-    '[data-auto="promotion-badge"]',
-    '.promotions__badge',
-    '.offer-text',
-    '.promotion-banner',
-    '[data-testid="promotion-badge"]',
-    '[data-testid*="rollback"]',
-    '[class*="rollback"]',
-    '[data-testid*="promo"]',
-  ], root);
-
   const imageUrl = getAttr([
     'img[data-auto="product-image"]',
     '.product-image img',
@@ -275,7 +311,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     price: parsePrice(priceText),
     was_price: parsePrice(wasPriceText),
     loyalty_price: parsePrice(loyaltyPriceText),
-    offer_badge: offerBadge,
+    offer_deal: extractDealText(root),
     offer_expires_at: extractOfferExpiry(),
     image_url: imageUrl,
     product_url: window.location.href,
@@ -333,7 +369,7 @@ export function extractProduct(): ExtractedProduct | null {
     price: dom.price ?? jsonLd?.price ?? null,
     loyalty_price: dom.loyalty_price ?? null,
     was_price: dom.was_price ?? null,
-    offer_badge: dom.offer_badge ?? null,
+    offer_deal: dom.offer_deal ?? null,
     offer_expires_at: dom.offer_expires_at ?? jsonLd?.offer_expires_at ?? null,
     image_url: jsonLd?.image_url ?? dom.image_url ?? null,
     product_url: jsonLd?.product_url || dom.product_url || window.location.href,

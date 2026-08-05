@@ -168,12 +168,14 @@ function renderProduct(product: ExtractedProduct) {
     'Waitrose': 'My Waitrose',
   };
   const loyaltyLabel = loyaltyLabelMap[product.store] || 'Loyalty';
-  const loyaltyHtml = product.loyalty_price != null
+
+  const hasMultiBuy = !!product.offer_deal;
+  const loyaltyHtml = !hasMultiBuy && product.loyalty_price != null
     ? `<span class="price-loyalty">${loyaltyLabel} £${product.loyalty_price.toFixed(2)}</span>`
     : '';
 
-  const badgeHtml = product.offer_badge
-    ? `<div class="offer-badge">${product.offer_badge}</div>`
+  const dealHtml = product.offer_deal
+    ? `<div class="deal-badge">${product.offer_deal}</div>`
     : '';
 
   app.innerHTML = `
@@ -192,7 +194,7 @@ function renderProduct(product: ExtractedProduct) {
             ${wasHtml}
             ${loyaltyHtml}
           </div>
-          ${badgeHtml}
+          ${dealHtml}
         </div>
       </div>
     </div>

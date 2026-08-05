@@ -4,13 +4,13 @@ const KEYWORD_MAP: Record<string, string[]> = {
     'eggs', 'butter', 'fromage frais', 'quark', 'sour cream',
     'crème fraîche', 'custard', 'dessert', 'deli', 'sandwich',
     'sandwiches', ' wraps', 'pasta salad', 'coleslaw', 'hummus',
-    'dips', 'chilled', 'fresh', 'ham', 'meat', 'beef', 'Salmon, tuna & trout',
+    'dips', 'chilled', 'fresh', 'ham', 'meat', 'beef', 'Salmon, tuna & trout', 'pork belly',
   ],
   Snacks: [
     'crisps', 'chips', 'nuts', 'snack', 'snacks', 'bar', 'bars',
     'cereal bar', 'granola bar', 'chocolate', 'confectionery',
     'sweets', 'candy', 'biscuits', 'cookies', 'crackers', 'popcorn',
-    'pretzels', 'trail mix', 'jerky', 'pork scratchings',
+    'pretzels', 'trail mix', 'jerky', 'scratchings',
     'rice cakes', 'corn snacks',
   ],
   Beverages: [
