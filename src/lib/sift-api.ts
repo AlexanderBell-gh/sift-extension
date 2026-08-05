@@ -24,6 +24,7 @@ export async function addToWatchlist(
     'Morrisons': 'More Card',
     'Co-op': 'Member',
     'Waitrose': 'My Waitrose',
+    'ASDA': 'Rollback',
   };
 
   const body = {
@@ -44,7 +45,7 @@ export async function addToWatchlist(
       offer_expires_at: product.offer_expires_at || null,
       category: product.category || null,
       product_url: product.product_url,
-      is_on_offer: !!product.offer_badge || !!product.was_price || !!product.offer_expires_at,
+      is_on_offer: !!product.offer_badge || !!product.was_price || !!product.offer_expires_at || !!product.loyalty_price,
     },
   };
 

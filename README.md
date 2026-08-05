@@ -20,7 +20,7 @@ Browse to any supported store → click the extension icon → review product da
 |-------|-----------|-------|
 | Tesco | Full | Clubcard price |
 | Sainsbury's | Full | Nectar price |
-| ASDA | Full | Rollback promotions |
+| ASDA | Full | Rollback promotions (no expiry — counted as on-offer via rollback price) |
 | Morrisons | Partial | More Card price |
 | M&S | Partial | — |
 | Aldi | Partial | — |
