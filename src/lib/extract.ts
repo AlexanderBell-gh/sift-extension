@@ -100,6 +100,14 @@ function extractOfferExpiry(): string | null {
     if (match) return toISODate(match[0]);
   }
 
+  const sainsburysAlert = document.querySelector<HTMLElement>(
+    '[class*="alert__message"], [class*="alert-message"], .ds-c-alert'
+  );
+  if (sainsburysAlert?.textContent) {
+    const match = sainsburysAlert.textContent.match(/(\d{1,2}\s+\w+\s+\d{4})/);
+    if (match) return toISODate(match[1]);
+  }
+
   const tescoSel = '.ddsweb-value-bar__terms, [class*="value-bar__terms"], [class*="termsText"]';
   const tescoEls = document.querySelectorAll<HTMLElement>(tescoSel);
   for (const el of tescoEls) {
@@ -110,10 +118,10 @@ function extractOfferExpiry(): string | null {
 
   const patterns = [
     /until\s+(\d{2}\/\d{2}\/\d{4})/,
-    new RegExp('until[\\s:]\\s*(' + dateShort.source + ')', 'i'),
-    new RegExp('expires?[\\s:]\\s*(' + dateShort.source + ')', 'i'),
-    new RegExp('valid until[\\s:]\\s*(' + dateShort.source + ')', 'i'),
-    new RegExp('ends?[\\s:]\\s*(' + dateShort.source + ')', 'i'),
+    new RegExp('until[\\s:]\\s*(?:[a-z]{3,9},\\s*)?(' + dateShort.source + ')', 'i'),
+    new RegExp('expires?[\\s:]\\s*(?:[a-z]{3,9},\\s*)?(' + dateShort.source + ')', 'i'),
+    new RegExp('valid until[\\s:]\\s*(?:[a-z]{3,9},\\s*)?(' + dateShort.source + ')', 'i'),
+    new RegExp('ends?[\\s:]\\s*(?:[a-z]{3,9},\\s*)?(' + dateShort.source + ')', 'i'),
   ];
   const candidates = document.querySelectorAll<HTMLElement>(
     '[class*="offer"], [class*="promotion"], [class*="expiry"], [class*="terms"], [data-testid*="offer"], [data-testid*="promotion"], p, span, div'
@@ -150,7 +158,7 @@ function getAsdaPrice(label: string, root: ParentNode = document): string | null
   return null;
 }
 
-function extractCategory(root: ParentNode = document): string | null {
+function getBreadcrumbCrumbs(root: ParentNode = document): string[] {
   const selectors = [
     '[data-auto="breadcrumb"] a',
     '[data-testid="breadcrumb"] a',
@@ -166,6 +174,16 @@ function extractCategory(root: ParentNode = document): string | null {
     const text = link.textContent?.trim();
     if (text) crumbs.push(text);
   }
+  return crumbs;
+}
+
+function hasFrozenSignal(root: ParentNode = document, title: string | null): boolean {
+  if (title && /frozen/i.test(title)) return true;
+  return getBreadcrumbCrumbs(root).some(c => /frozen/i.test(c));
+}
+
+function extractCategory(root: ParentNode = document): string | null {
+  const crumbs = getBreadcrumbCrumbs(root);
   const raw = crumbs.length > 0 ? crumbs[crumbs.length - 1] : null;
   return raw ? normalizeCategory(raw) : null;
 }
@@ -174,13 +192,13 @@ function extractDealText(root: ParentNode = document): string | null {
   const pattern = /(\d+)\s*for\s*£?\s*(\d+\.?\d*)/i;
   const excludeSel = '[class*="carousel"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"]';
   const priceEl = qs<HTMLElement>(
-    '[data-testid="txt-pdp-product-price"], [class*="product-pricing"], [data-testid*="contextual-price"], [class*="value-bar"]',
+    '[data-testid="txt-pdp-product-price"], [class*="product-pricing"], [data-testid*="contextual-price"], [class*="value-bar"], .ds-c-price',
     root
   );
   const priceRect = priceEl?.getBoundingClientRect();
 
   const candidates = qsa<HTMLElement>(
-    '[class*="offer"], [class*="promotion"], [class*="multibuy"], [class*="multi-buy"], [class*="deal"], [data-testid*="offer"], [data-testid*="promotion"], [data-testid*="multi"], [data-locator*="offer"], a[data-locator], p, span, div',
+    '[class*="offer"], [class*="promotion"], [class*="multibuy"], [class*="multi-buy"], [class*="deal"], [class*="caption-module"], [class*="captionNectar"], [data-testid*="offer"], [data-testid*="promotion"], [data-testid*="multi"], [data-locator*="offer"], a[data-locator], p, span, div',
     root
   );
 
@@ -191,8 +209,9 @@ function extractDealText(root: ParentNode = document): string | null {
     if (text.length === 0 || text.length > 120) continue;
     if (!pattern.test(text)) continue;
 
+    const isCaption = el.classList.contains('caption-module') || el.closest('[class*="caption-module"]') != null;
     const rect = el.getBoundingClientRect();
-    if (priceRect) {
+    if (priceRect && !isCaption) {
       const overlap = rect.left < priceRect.right && rect.right > priceRect.left;
       const centerY = (rect.top + rect.bottom) / 2;
       const inBand = centerY > priceRect.top - 200 && centerY < priceRect.bottom + 250;
@@ -230,6 +249,7 @@ function extractFromJsonLd(): Partial<ExtractedProduct> | null {
 
 function getSinglePriceText(root: ParentNode, dealText: string | null): string | null {
   const selectors = [
+    '.ds-c-price__price[data-colour="subtle"]',
     '[data-testid="pd-retail-price"]',
     '.pd__cost__retail-price',
     '.pt__cost__retail-price',
@@ -265,6 +285,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
   ], root);
 
   const loyaltyPriceText = getText([
+    '.ds-c-price__price[data-colour="nectar"]',
     '[data-auto="clubcard-price"]',
     '.price--clubcard',
     '.clubcard-price',
@@ -292,6 +313,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
   ], root) || getAsdaPrice('actual price', root) || getLoyaltyPriceByPattern(root);
 
   const imageUrl = getAttr([
+    'img.pd__image',
     'img[data-auto="product-image"]',
     '.product-image img',
     'img[src*="digitalcontent.api.tesco.com"]',
@@ -306,6 +328,13 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '[data-testid="txt-pdp-product-name"]',
   ], root);
 
+  const titleCategory = title ? normalizeCategory(title) : 'Other';
+  const category = hasFrozenSignal(root, title)
+    ? 'Frozen'
+    : titleCategory === 'Other'
+      ? extractCategory(root) ?? 'Other'
+      : titleCategory;
+
   return {
     name: title,
     price: parsePrice(priceText),
@@ -315,7 +344,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     offer_expires_at: extractOfferExpiry(),
     image_url: imageUrl,
     product_url: window.location.href,
-    category: extractCategory(root),
+    category,
   };
 }
 
@@ -364,6 +393,10 @@ export function extractProduct(): ExtractedProduct | null {
   const jsonLd = extractFromJsonLd();
   const dom = extractFromDom();
 
+  const domCategory = dom.category === 'Other' ? jsonLd?.category ?? dom.category : dom.category;
+  const jsonLdFrozen = jsonLd?.category ? /frozen/i.test(jsonLd.category) : false;
+  const category = domCategory === 'Frozen' || jsonLdFrozen ? 'Frozen' : domCategory;
+
   return {
     name: dom.name || jsonLd?.name || null,
     price: dom.price ?? jsonLd?.price ?? null,
@@ -373,7 +406,7 @@ export function extractProduct(): ExtractedProduct | null {
     offer_expires_at: dom.offer_expires_at ?? jsonLd?.offer_expires_at ?? null,
     image_url: jsonLd?.image_url ?? dom.image_url ?? null,
     product_url: jsonLd?.product_url || dom.product_url || window.location.href,
-    category: dom.category ?? jsonLd?.category ?? null,
+    category,
     store: store.name,
     store_logo: store.logo,
     unit: null,

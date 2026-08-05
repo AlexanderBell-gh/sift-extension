@@ -34,20 +34,7 @@ Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.
 
 ## Category Mapping
 
-Raw breadcrumb text from store pages is normalized into target categories:
-
-| Category | Keyword matches |
-|----------|----------------|
-| Chilled | yogurt, milk, cheese, cream, dairy, eggs |
-| Snacks | crisps, nuts, bars, chocolate, biscuits |
-| Beverages | drinks, juice, tea, coffee, beer, wine |
-| Produce | fruit, vegetables, salad, lettuce |
-| Frozen | frozen, ice cream |
-| Bakery | bread, cakes, pastries, doughnuts |
-| Food Cupboard | pasta, rice, tins, sauces, cereal |
-| Other | unmatched fallback |
-
-See `src/lib/category-map.ts` for full keyword lists and exact-match overrides.
+Products are auto-categorised into `Chilled, Snacks, Beverages, Produce, Frozen, Bakery, Food Cupboard` (or `Other`) from the product title via keyword scoring, with breadcrumb/JSON-LD fallback. See `src/lib/category-map.ts` for the rules and full keyword lists, and `CONTEXT.md` for how titles resolve.
 
 ## Development
 

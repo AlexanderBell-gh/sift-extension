@@ -5,6 +5,8 @@ const KEYWORD_MAP: Record<string, string[]> = {
     'crème fraîche', 'custard', 'dessert', 'deli', 'sandwich',
     'sandwiches', ' wraps', 'pasta salad', 'coleslaw', 'hummus',
     'dips', 'chilled', 'fresh', 'ham', 'meat', 'beef', 'Salmon, tuna & trout', 'pork belly',
+    'berry', 'berries', 'blueberries', 'blueberry', 'strawberries',
+    'strawberry', 'raspberries', 'raspberry',
   ],
   Snacks: [
     'crisps', 'chips', 'nuts', 'snack', 'snacks', 'bar', 'bars',
@@ -22,10 +24,10 @@ const KEYWORD_MAP: Record<string, string[]> = {
   ],
   Produce: [
     'fruit', 'fruits', 'vegetable', 'vegetables', 'veg', 'salad',
-    'lettuce', 'berry', 'berries', 'apple', 'banana', 'orange',
+    'lettuce', 'apple', 'banana', 'orange',
     'tomato', 'potato', 'onion', 'carrot', 'pepper', 'mushroom',
     'broccoli', 'spinach', 'kale', 'cucumber', 'avocado', 'citrus',
-    'melon', 'grapes', 'strawberry', 'blueberry', 'cherry',
+    'melon', 'grapes',
     'produce', 'fresh produce', 'loose',
   ],
   Frozen: [
@@ -49,12 +51,12 @@ const KEYWORD_MAP: Record<string, string[]> = {
     'condiment', 'condiments', 'jam', 'jelly', 'marmalade',
     'peanut butter', 'honey', 'syrup', 'chutney', 'pickle',
     'relish', 'soup', 'broth', 'stock cube', 'bouillon cube',
-    'packet', 'sachet', 'jar', 'bottle',
+    'packet', 'sachet', 'jar', 'bottle', 'oats', 'jumbo oats',
   ],
 };
 
 const EXACT_OVERRIDES: Record<string, string> = {
-  'Berries & Cherries': 'Produce',
+  'Berries & Cherries': 'Chilled',
   'Eggs': 'Chilled',
   'Milk': 'Chilled',
   'Ice cream tubs': 'Frozen',
@@ -82,6 +84,8 @@ export function normalizeCategory(raw: string): string {
   if (exactKey) return EXACT_OVERRIDES[exactKey];
 
   const tokens = tokenize(trimmed);
+
+  if (tokens.includes('frozen')) return 'Frozen';
 
   let bestCategory = 'Other';
   let bestScore = 0;
