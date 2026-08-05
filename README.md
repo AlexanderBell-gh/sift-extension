@@ -14,6 +14,8 @@ Chrome MV3 browser extension for [Sift](https://siftsearch.pages.dev) — UK sup
 
 Browse to any supported store → click the extension icon → review product data → **Add to Watchlist**.
 
+Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.), previous ("was") price, offer expiry, category, and deal terms (multi-buy "Any 3 for £12"). Deals show as an orange pill; multi-buy items show the single price with the deal pill instead of a per-unit loyalty line.
+
 ## Supported Stores
 
 | Store | Extraction | Notes |
