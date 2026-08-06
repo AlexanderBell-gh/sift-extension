@@ -189,7 +189,7 @@ function extractCategory(root: ParentNode = document): string | null {
 }
 
 function extractDealText(root: ParentNode = document): string | null {
-  const pattern = /(\d+)\s*for\s*£?\s*(\d+\.?\d*)/i;
+  const pattern = /(\d+\s*for\s*£?\s*\d+\.?\d*|for\s*£?\s*\d+\.?\d*)/i;
   const excludeSel = '[class*="carousel"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"]';
   const priceEl = qs<HTMLElement>(
     '[data-testid="txt-pdp-product-price"], [class*="product-pricing"], [data-testid*="contextual-price"], [class*="value-bar"], .ds-c-price',
