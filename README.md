@@ -14,7 +14,7 @@ Chrome MV3 browser extension for [Sift](https://siftsearch.pages.dev) — UK sup
 
 Browse to any supported store → click the extension icon → review product data → **Add to Watchlist**.
 
-Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.), previous ("was") price, offer expiry, category, and deal terms (multi-buy "Any 3 for £12"). Deals show as an orange pill; multi-buy items show the single price with the deal pill instead of a per-unit loyalty line.
+Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.), previous ("was") price, offer expiry, category, and deal terms (multi-buy "Any 3 for £12", meal deals "Meal Deal for £15.00 with Nectar"). Deals show as an orange pill; when a deal term is present, items show the single price with the deal pill instead of a per-unit loyalty line.
 
 ## Supported Stores
 
@@ -34,7 +34,7 @@ Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.
 
 ## Category Mapping
 
-Products are auto-categorised into `Chilled, Snacks, Beverages, Produce, Frozen, Bakery, Food Cupboard` (or `Other`) from the product title via keyword scoring, with breadcrumb/JSON-LD fallback. See `src/lib/category-map.ts` for the rules and full keyword lists, and `CONTEXT.md` for how titles resolve.
+Products are auto-categorised into `Chilled, Snacks, Beverages, Produce, Frozen, Bakery, Food Cupboard` (or `Other`) from the product title via keyword scoring, with breadcrumb/JSON-LD fallback. Personal-care items (hand wash, body lotion) are force-routed to `Other`. See `src/lib/category-map.ts` for the rules and full keyword lists, and `CONTEXT.md` for how titles resolve.
 
 ## Development
 
