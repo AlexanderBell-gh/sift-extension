@@ -116,6 +116,18 @@ function extractOfferExpiry(): string | null {
     if (match) return toISODate(match[1]);
   }
 
+  if (/morrisons\.com/.test(window.location.hostname)) {
+    const morrisonsEls = document.querySelectorAll<HTMLElement>('[class*="--promotion"]');
+    for (const el of morrisonsEls) {
+      const text = el.textContent || '';
+      if (!/offer/i.test(text)) continue;
+      const match =
+        text.match(/(?:order\s*by|until|before|valid until)\s+(\d{2}\/\d{2}\/\d{4})/i) ||
+        text.match(/(\d{2}\/\d{2}\/\d{4})/);
+      if (match) return toISODate(match[1]);
+    }
+  }
+
   const patterns = [
     /until\s+(\d{2}\/\d{2}\/\d{4})/,
     new RegExp('until[\\s:]\\s*(?:[a-z]{3,9},\\s*)?(' + dateShort.source + ')', 'i'),
@@ -190,7 +202,10 @@ function extractCategory(root: ParentNode = document): string | null {
 
 function extractDealText(root: ParentNode = document): string | null {
   const pattern = /(\d+\s*for\s*£?\s*\d+\.?\d*|for\s*£?\s*\d+\.?\d*)/i;
-  const excludeSel = '[class*="carousel"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"]';
+  let excludeSel = '[class*="carousel"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"]';
+  if (/morrisons\.com/.test(window.location.hostname)) {
+    excludeSel += ', [data-test*="carousel"], [data-test*="related"], [data-test*="recommend"], [data-test*="you-might"]';
+  }
   const priceEl = qs<HTMLElement>(
     '[data-testid="txt-pdp-product-price"], [class*="product-pricing"], [data-testid*="contextual-price"], [class*="value-bar"], .ds-c-price',
     root
@@ -335,11 +350,29 @@ function extractFromDom(): Partial<ExtractedProduct> {
       ? extractCategory(root) ?? 'Other'
       : titleCategory;
 
+  let finalPrice = parsePrice(priceText);
+  let finalWasPrice = parsePrice(wasPriceText);
+  let finalLoyaltyPrice = parsePrice(loyaltyPriceText);
+
+  if (/morrisons\.com/.test(window.location.hostname)) {
+    const promoEls = document.querySelectorAll<HTMLElement>('[class*="--promotion"]');
+    for (const el of promoEls) {
+      const text = el.textContent || '';
+      const match = text.match(/Now\s*£([\d.]+),?\s*Was\s*£([\d.]+)/i);
+      if (match) {
+        finalPrice = parseFloat(match[2]);
+        finalLoyaltyPrice = parseFloat(match[1]);
+        finalWasPrice = null;
+        break;
+      }
+    }
+  }
+
   return {
     name: title,
-    price: parsePrice(priceText),
-    was_price: parsePrice(wasPriceText),
-    loyalty_price: parsePrice(loyaltyPriceText),
+    price: finalPrice,
+    was_price: finalWasPrice,
+    loyalty_price: finalLoyaltyPrice,
     offer_deal: extractDealText(root),
     offer_expires_at: extractOfferExpiry(),
     image_url: imageUrl,
