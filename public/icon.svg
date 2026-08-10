@@ -1,4 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="16" fill="#1a1a1a"/>
-  <text x="64" y="85" font-family="system-ui, sans-serif" font-size="72" font-weight="700" fill="white" text-anchor="middle">S</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <mask id="perfect-center-hole">
+      <rect width="32" height="32" fill="white" />
+      <circle cx="16" cy="9" r="3" fill="black" />
+    </mask>
+  </defs>
+  <g transform="rotate(-10 16 16)">
+    <rect x="6" y="2" width="20" height="28" rx="4" fill="#FF5701" mask="url(#perfect-center-hole)"/>
+  </g>
 </svg>

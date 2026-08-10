@@ -2,9 +2,14 @@ import type { ExtractedProduct } from '../../src/types';
 import { addToWatchlist, login } from '../../src/lib/sift-api';
 
 const SIFT_LOGO = `<svg class="header-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <mask id="logo-hole">
+      <rect width="32" height="32" fill="white"/>
+      <circle cx="16" cy="9" r="3" fill="black"/>
+    </mask>
+  </defs>
   <g transform="rotate(-10 16 16)">
-    <rect x="6" y="2" width="20" height="28" rx="4" fill="#FF5701"/>
-    <circle cx="16" cy="9" r="3" fill="background"/>
+    <rect x="6" y="2" width="20" height="28" rx="4" fill="#FF5701" mask="url(#logo-hole)"/>
   </g>
 </svg>`;
 
