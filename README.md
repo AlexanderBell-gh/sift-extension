@@ -23,7 +23,7 @@ Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.
 | Tesco | Full | Clubcard price |
 | Sainsbury's | Full | Nectar price |
 | ASDA | Full | Rollback promotions (no expiry — counted as on-offer via rollback price) |
-| Morrisons | Full | More Card price |
+| Morrisons | Full | More Card price; on-offer items show "Now £X, Was £Y" as More Card + regular price |
 | M&S | Partial | — |
 | Aldi | Partial | — |
 | Lidl | Partial | — |
