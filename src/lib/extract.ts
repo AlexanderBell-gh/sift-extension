@@ -94,29 +94,36 @@ function toISODate(raw: string): string {
 function extractOfferExpiry(): string | null {
   const dateShort = /\d{1,2}\s+\w+\s+\d{4}/;
 
-  const sainsburysEl = document.querySelector<HTMLElement>('.expiry-date');
-  if (sainsburysEl?.textContent) {
-    const match = sainsburysEl.textContent.trim().match(dateShort);
-    if (match) return toISODate(match[0]);
+  // ---- Sainsbury's ----
+  if (isStore('sainsburys')) {
+    const sainsburysEl = document.querySelector<HTMLElement>('.expiry-date');
+    if (sainsburysEl?.textContent) {
+      const match = sainsburysEl.textContent.trim().match(dateShort);
+      if (match) return toISODate(match[0]);
+    }
+
+    const sainsburysAlert = document.querySelector<HTMLElement>(
+      '[class*="alert__message"], [class*="alert-message"], .ds-c-alert'
+    );
+    if (sainsburysAlert?.textContent) {
+      const match = sainsburysAlert.textContent.match(/(\d{1,2}\s+\w+\s+\d{4})/);
+      if (match) return toISODate(match[1]);
+    }
   }
 
-  const sainsburysAlert = document.querySelector<HTMLElement>(
-    '[class*="alert__message"], [class*="alert-message"], .ds-c-alert'
-  );
-  if (sainsburysAlert?.textContent) {
-    const match = sainsburysAlert.textContent.match(/(\d{1,2}\s+\w+\s+\d{4})/);
-    if (match) return toISODate(match[1]);
+  // ---- Tesco ----
+  if (isStore('tesco')) {
+    const tescoSel = '.ddsweb-value-bar__terms, [class*="value-bar__terms"], [class*="termsText"]';
+    const tescoEls = document.querySelectorAll<HTMLElement>(tescoSel);
+    for (const el of tescoEls) {
+      const text = el.textContent?.trim() || '';
+      const match = text.match(/until\s+(\d{2}\/\d{2}\/\d{4})/);
+      if (match) return toISODate(match[1]);
+    }
   }
 
-  const tescoSel = '.ddsweb-value-bar__terms, [class*="value-bar__terms"], [class*="termsText"]';
-  const tescoEls = document.querySelectorAll<HTMLElement>(tescoSel);
-  for (const el of tescoEls) {
-    const text = el.textContent?.trim() || '';
-    const match = text.match(/until\s+(\d{2}\/\d{2}\/\d{4})/);
-    if (match) return toISODate(match[1]);
-  }
-
-  if (/morrisons\.com/.test(window.location.hostname)) {
+  // ---- Morrisons ----
+  if (isStore('morrisons')) {
     const morrisonsEls = document.querySelectorAll<HTMLElement>('[class*="--promotion"]');
     for (const el of morrisonsEls) {
       const text = el.textContent || '';
@@ -128,6 +135,7 @@ function extractOfferExpiry(): string | null {
     }
   }
 
+  // ---- Generic fallback ----
   const patterns = [
     /until\s+(\d{2}\/\d{2}\/\d{4})/,
     new RegExp('until[\\s:]\\s*(?:[a-z]{3,9},\\s*)?(' + dateShort.source + ')', 'i'),
@@ -203,7 +211,8 @@ function extractCategory(root: ParentNode = document): string | null {
 function extractDealText(root: ParentNode = document): string | null {
   const pattern = /(\d+\s*for\s*£?\s*\d+\.?\d*|for\s*£?\s*\d+\.?\d*)/i;
   let excludeSel = '[class*="carousel"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"]';
-  if (/morrisons\.com/.test(window.location.hostname)) {
+  // ---- Morrisons ----
+  if (isStore('morrisons')) {
     excludeSel += ', [data-test*="carousel"], [data-test*="related"], [data-test*="recommend"], [data-test*="you-might"]';
   }
   const priceEl = qs<HTMLElement>(
@@ -289,17 +298,141 @@ function extractFromDom(): Partial<ExtractedProduct> {
 
   const dealText = extractDealText(root);
 
-  const priceText = getSinglePriceText(root, dealText) || getAsdaPrice('was', root) || getAsdaPrice('actual price', root);
+  let priceText: string | null = null;
+  let wasPriceText: string | null = null;
+  let loyaltyPriceText: string | null = null;
+  let imageUrl: string | null = null;
+  let title: string | null = null;
 
-  const wasPriceText = getText([
+  // ---- Sainsbury's ----
+  if (isStore('sainsburys')) {
+    priceText = getSinglePriceText(root, dealText) || getText([
+      '.ds-c-price__price[data-colour="subtle"]',
+      '[data-testid="pd-retail-price"]',
+      '.pd__cost__retail-price',
+    ], root);
+    wasPriceText = getText([
+      '[data-auto="was-price"]',
+      '.price--was',
+      '.product-price--previous',
+      '.pt__cost__retail-price--was',
+      '[data-testid="was-price"]',
+    ], root);
+    loyaltyPriceText = getText([
+      '.ds-c-price__price[data-colour="nectar"]',
+      '.pd__cost--price',
+      '.nectar-offer',
+      '[class*="nectar-price"]',
+      '[data-testid*="nectar"]',
+      '.product-pricing__nectar',
+    ], root) || getLoyaltyPriceByPattern(root);
+    imageUrl = getAttr([
+      'img.pd__image',
+      'img[data-auto="product-image"]',
+      '.product-image img',
+    ], 'src', root);
+    title = getText([
+      'h1',
+      '[data-auto="product-title"]',
+    ], root);
+  }
+
+  // ---- Tesco ----
+  if (isStore('tesco')) {
+    priceText = getSinglePriceText(root, dealText) || getText([
+      '[data-testid="product-tile-price"]',
+      '.price-main__integer',
+      '.product-price',
+    ], root);
+    wasPriceText = getText([
+      '[data-auto="was-price"]',
+      '.product-price--previous',
+      '[data-testid="was-price"]',
+    ], root);
+    loyaltyPriceText = getText([
+      '[data-auto="clubcard-price"]',
+      '.price--clubcard',
+      '.clubcard-price',
+      '[data-testid="clubcard-price"]',
+      '[data-testid="contextual-price-text"]',
+      '.ddsweb-value-bar__content-text',
+    ], root) || getLoyaltyPriceByPattern(root);
+    imageUrl = getAttr([
+      'img[src*="digitalcontent.api.tesco.com"]',
+      '[data-testid="product-tile-image"] img',
+      'img[data-auto="product-image"]',
+    ], 'src', root);
+    title = getText([
+      'h1',
+      '[data-testid="product-tile-title"]',
+      '[data-auto="product-title"]',
+    ], root);
+  }
+
+  // ---- ASDA ----
+  if (isStore('asda')) {
+    priceText = getSinglePriceText(root, dealText) || getAsdaPrice('was', root) || getAsdaPrice('actual price', root);
+    wasPriceText = getText([
+      '[data-auto="was-price"]',
+      '.price--was',
+      '.product-price--previous',
+      '[data-testid="was-price"]',
+    ], root);
+    loyaltyPriceText = getText([
+      '[data-testid="contextual-price-text"]',
+      '[class*="asda-price"]',
+      '[data-testid*="asda-price"]',
+      '[data-testid*="reduced"]',
+      '[class*="price-lock"]',
+      '[data-testid*="price-lock"]',
+    ], root) || getAsdaPrice('actual price', root) || getLoyaltyPriceByPattern(root);
+    imageUrl = getAttr([
+      'img[data-testid="img"]',
+      '.product-image img',
+      'img[data-auto="product-image"]',
+    ], 'src', root);
+    title = getText([
+      'h1',
+      '[data-testid="txt-pdp-product-name"]',
+    ], root);
+  }
+
+  // ---- Morrisons ----
+  if (isStore('morrisons')) {
+    priceText = getSinglePriceText(root, dealText) || getText([
+      '.product-price',
+      '.price-main__integer',
+    ], root);
+    wasPriceText = getText([
+      '[data-auto="was-price"]',
+      '.price--was',
+      '.product-price--previous',
+      '[data-testid="was-price"]',
+    ], root);
+    loyaltyPriceText = getText([
+      '[class*="more-card"]',
+      '[data-testid*="more-card"]',
+    ], root) || getLoyaltyPriceByPattern(root);
+    imageUrl = getAttr([
+      'img[data-auto="product-image"]',
+      '.product-image img',
+    ], 'src', root);
+    title = getText([
+      'h1',
+      '[data-auto="product-title"]',
+    ], root);
+  }
+
+  // ---- Generic fallback (M&S, Aldi, Lidl, Co-op, Waitrose, Iceland, Ocado) ----
+  priceText = priceText || getSinglePriceText(root, dealText) || getAsdaPrice('was', root) || getAsdaPrice('actual price', root);
+  wasPriceText = wasPriceText || getText([
     '[data-auto="was-price"]',
     '.price--was',
     '.product-price--previous',
     '.pt__cost__retail-price--was',
     '[data-testid="was-price"]',
   ], root);
-
-  const loyaltyPriceText = getText([
+  loyaltyPriceText = loyaltyPriceText || getText([
     '.ds-c-price__price[data-colour="nectar"]',
     '[data-auto="clubcard-price"]',
     '.price--clubcard',
@@ -327,7 +460,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '[data-testid*="price-lock"]',
   ], root) || getAsdaPrice('actual price', root) || getLoyaltyPriceByPattern(root);
 
-  const imageUrl = getAttr([
+  imageUrl = imageUrl || getAttr([
     'img.pd__image',
     'img[data-auto="product-image"]',
     '.product-image img',
@@ -336,7 +469,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     'img[data-testid="img"]',
   ], 'src', root);
 
-  const title = getText([
+  title = title || getText([
     'h1',
     '[data-auto="product-title"]',
     '[data-testid="product-tile-title"]',
@@ -354,7 +487,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
   let finalWasPrice = parsePrice(wasPriceText);
   let finalLoyaltyPrice = parsePrice(loyaltyPriceText);
 
-  if (/morrisons\.com/.test(window.location.hostname)) {
+  if (isStore('morrisons')) {
     const promoEls = document.querySelectorAll<HTMLElement>('[class*="--promotion"]');
     for (const el of promoEls) {
       const text = el.textContent || '';
@@ -417,6 +550,11 @@ function detectStore(): { id: string; name: string; logo: string } | null {
     return { id: 'ocado', name: 'Ocado', logo: '/Ocado_Logo.svg' };
   }
   return null;
+}
+
+function isStore(...ids: string[]): boolean {
+  const store = detectStore();
+  return store !== null && ids.includes(store.id);
 }
 
 export function extractProduct(): ExtractedProduct | null {
