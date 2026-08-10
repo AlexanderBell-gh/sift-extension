@@ -53,6 +53,6 @@ JSON-LD + DOM merge, DOM priority. Scoped to `<main>` via `getProductRoot()`. St
 
 ## Markdowns
 
-- `/home/wsl/Projects/markdowns/Sift Project/Extension/CONTEXT.md` — Full architecture
-- `/home/wsl/Projects/markdowns/Sift Project/Extension/CHANGELOG.md` — Log for every change with file + line numbers
-- `/home/wsl/Projects/markdowns/Sift Project/DESIGN.md` — Design tokens
+- `/home/wsl/Projects/markdowns/Sift-Markdowns/Extension/CONTEXT.md` — Full architecture
+- `/home/wsl/Projects/markdowns/Sift-Markdowns/Extension/CHANGELOG.md` — Log for every change with file + line numbers
+- `/home/wsl/Projects/markdowns/Sift-Markdowns/DESIGN.md` — Design tokens
