@@ -5,7 +5,7 @@ export default defineContentScript({
   matches: [
     'https://www.tesco.com/*',
     'https://www.sainsburys.co.uk/*',
-    'https://www.asda.com/*',
+    'https://www.asda.com/groceries/*',
     'https://groceries.morrisons.com/*',
     'https://www.marksandspencer.com/*',
     'https://www.aldi.co.uk/*',

@@ -71,6 +71,29 @@ function tokenize(raw: string): string[] {
     .filter(w => w.length > 1 && !STOP_WORDS.has(w));
 }
 
+function tokenizeKeyword(keyword: string): string[] {
+  return tokenize(keyword);
+}
+
+function keywordMatches(keywordTokens: string[], tokens: string[]): boolean {
+  if (keywordTokens.length === 0) return false;
+  if (keywordTokens.length === 1) {
+    const kw = keywordTokens[0];
+    return tokens.some(t => t === kw || (kw.length >= 4 && t.includes(kw)));
+  }
+  for (let i = 0; i <= tokens.length - keywordTokens.length; i++) {
+    let match = true;
+    for (let j = 0; j < keywordTokens.length; j++) {
+      if (tokens[i + j] !== keywordTokens[j]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) return true;
+  }
+  return false;
+}
+
 export function normalizeCategory(raw: string): string {
   const trimmed = raw.replace(/^Back to\s+/i, '').trim();
 
@@ -87,10 +110,9 @@ export function normalizeCategory(raw: string): string {
 
   for (const [category, keywords] of Object.entries(KEYWORD_MAP)) {
     let score = 0;
-    for (const token of tokens) {
-      if (keywords.some(kw => token.includes(kw) || kw.includes(token))) {
-        score++;
-      }
+    for (const keyword of keywords) {
+      const keywordTokens = tokenizeKeyword(keyword);
+      if (keywordMatches(keywordTokens, tokens)) score += keywordTokens.length >= 2 ? 2 : 1;
     }
     if (score > bestScore) {
       bestScore = score;
