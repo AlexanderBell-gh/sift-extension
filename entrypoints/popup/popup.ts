@@ -15,6 +15,15 @@ const SIFT_LOGO = `<svg class="header-logo" viewBox="0 0 32 32" fill="none" xmln
 
 const app = document.getElementById('app')!;
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 let token = '';
 
 async function init() {
@@ -137,7 +146,7 @@ function renderError(message: string) {
       ${SIFT_LOGO}
       <h1>Sift</h1>
     </div>
-    <div class="error">${message}</div>
+    <div class="error">${escapeHtml(message)}</div>
   `;
 }
 
@@ -153,7 +162,7 @@ function renderEmpty() {
 
 function renderProduct(product: ExtractedProduct) {
   const imgHtml = product.image_url
-    ? `<img class="product-img" src="${product.image_url}" alt="" />`
+    ? `<img class="product-img" src="${escapeHtml(product.image_url)}" alt="" />`
     : `<div class="product-img" style="display:flex;align-items:center;justify-content:center;font-size:24px">🛒</div>`;
 
   const priceHtml = product.price != null
@@ -180,7 +189,7 @@ function renderProduct(product: ExtractedProduct) {
     : '';
 
   const dealHtml = product.offer_deal
-    ? `<div class="deal-badge">${product.offer_deal}</div>`
+    ? `<div class="deal-badge">${escapeHtml(product.offer_deal)}</div>`
     : '';
 
   app.innerHTML = `
@@ -192,8 +201,8 @@ function renderProduct(product: ExtractedProduct) {
       <div class="product-top">
         ${imgHtml}
         <div class="product-info">
-          <div class="product-store">${product.store}</div>
-          <div class="product-name">${product.name || 'Unknown product'}</div>
+          <div class="product-store">${escapeHtml(product.store)}</div>
+          <div class="product-name">${escapeHtml(product.name || 'Unknown product')}</div>
           <div class="prices">
             ${priceHtml}
             ${wasHtml}

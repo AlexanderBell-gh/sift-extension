@@ -24,8 +24,17 @@ interface JsonLdProduct {
 function parsePrice(text: string | undefined | null): number | null {
   if (!text) return null;
   const cleaned = text.replace(/,/g, '');
-  const pence = cleaned.match(/(\d+)p\b/i);
-  if (pence && !cleaned.includes('\u00A3')) return parseFloat(pence[1]) / 100;
+
+  if (cleaned.includes('\u00A3')) {
+    if (/\d\s*for\s*£?\s*\d/.test(cleaned)) return null;
+    const poundMatch = cleaned.match(/£\s*(\d+\.?\d*)/);
+    if (poundMatch) return parseFloat(poundMatch[1]);
+  } else {
+    const pence = cleaned.match(/(\d+)p\b/i);
+    if (pence) return parseFloat(pence[1]) / 100;
+    if (/%/.test(cleaned)) return null;
+  }
+
   const match = cleaned.match(/(\d+\.?\d*)/);
   return match ? parseFloat(match[1]) : null;
 }
