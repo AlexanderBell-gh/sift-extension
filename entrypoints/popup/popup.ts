@@ -2,6 +2,13 @@ import type { ExtractedProduct } from '../../src/types';
 import { addToWatchlist, login } from '../../src/lib/sift-api';
 import { LOYALTY_LABELS } from '../../src/lib/loyalty';
 
+const STORE_COLORS: Record<string, string> = {
+  "Sainsbury's": '#8223fa',
+  'Tesco': '#00539f',
+  'ASDA': '#c21e4d',
+  'Morrisons': '#005f27',
+};
+
 const SIFT_LOGO = `<svg class="header-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <mask id="logo-hole">
@@ -175,14 +182,15 @@ function renderProduct(product: ExtractedProduct) {
     : '';
 
   const loyaltyLabel = LOYALTY_LABELS[product.store] || 'Loyalty';
+  const storeColor = STORE_COLORS[product.store];
 
   const hasMultiBuy = !!product.offer_deal;
   const loyaltyHtml = !hasMultiBuy && product.loyalty_price != null
-    ? `<span class="price-loyalty">${loyaltyLabel} £${product.loyalty_price.toFixed(2)}</span>`
+    ? `<span class="price-loyalty"${storeColor ? ` style="color:${storeColor}"` : ''}>${loyaltyLabel} £${product.loyalty_price.toFixed(2)}</span>`
     : '';
 
   const dealHtml = product.offer_deal
-    ? `<div class="deal-badge">${escapeHtml(product.offer_deal)}</div>`
+    ? `<div class="deal-badge"${storeColor ? ` style="background:${storeColor}"` : ''}>${escapeHtml(product.offer_deal)}</div>`
     : '';
 
   app.innerHTML = `
