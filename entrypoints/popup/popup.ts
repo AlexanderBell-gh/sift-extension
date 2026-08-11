@@ -78,7 +78,7 @@ function renderLogin() {
       <div id="login-error" class="error-msg"></div>
       <button class="btn btn-primary" id="login-btn">Sign In</button>
       <div class="divider"><span>or</span></div>
-      <button class="btn btn-link" id="link-btn">Click here for Trial Users</button>
+      <button class="btn btn-link" id="link-btn">24hr Trial Login</button>
     </div>
   `;
 
@@ -115,7 +115,7 @@ function renderLogin() {
     if (tabs.length === 0) {
       errorEl.textContent = 'Open siftsearch.pages.dev first and sign in.';
       btn.disabled = false;
-      btn.textContent = 'Click here for Trial Users';
+      btn.textContent = '24hr Trial Login';
       return;
     }
 
@@ -128,12 +128,12 @@ function renderLogin() {
       } else {
         errorEl.textContent = 'No session found on siftsearch.pages.dev. Sign in there first.';
         btn.disabled = false;
-        btn.textContent = 'Click here for Trial Users';
+        btn.textContent = '24hr Trial Login';
       }
     } catch {
       errorEl.textContent = 'Cannot reach siftsearch.pages.dev. Reload the page and try again.';
       btn.disabled = false;
-      btn.textContent = 'Click here for Trial Users';
+      btn.textContent = '24hr Trial Login';
     }
   });
 }
