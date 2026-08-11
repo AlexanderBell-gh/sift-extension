@@ -4,7 +4,7 @@ const KEYWORD_MAP: Record<string, string[]> = {
     'eggs', 'butter', 'fromage frais', 'quark', 'sour cream',
     'crème fraîche', 'custard', 'dessert', 'deli', 'sandwich',
     'sandwiches', ' wraps', 'pasta salad', 'coleslaw', 'hummus',
-    'dips', 'chilled', 'fresh', 'ham', 'meat', 'beef', 'Salmon, tuna & trout', 'pork belly',
+    'dips', 'chilled', 'fresh', 'ham', 'meat', 'beef', 'Salmon, tuna & trout', 'salmon', 'pork belly',
     'berry', 'berries', 'blueberries', 'blueberry', 'strawberries',
     'strawberry', 'raspberries', 'raspberry', 'kiwi',
   ],

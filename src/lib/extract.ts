@@ -26,8 +26,9 @@ function parsePrice(text: string | undefined | null): number | null {
   if (!text) return null;
   const cleaned = text.replace(/,/g, '');
 
+  if (/\d\s*for\s*£?\s*\d/.test(cleaned)) return null;
+
   if (cleaned.includes('\u00A3')) {
-    if (/\d\s*for\s*£?\s*\d/.test(cleaned)) return null;
     const poundMatch = cleaned.match(/£\s*(\d+\.?\d*)/);
     if (poundMatch) return parseFloat(poundMatch[1]);
   } else {
@@ -269,7 +270,11 @@ function extractFromJsonLd(): Partial<ExtractedProduct> | null {
   for (const script of scripts) {
     try {
       const data = JSON.parse(script.textContent || '');
-      const nodes = Array.isArray(data['@graph']) ? data['@graph'] : [data];
+      const nodes = Array.isArray(data)
+        ? data
+        : Array.isArray(data['@graph'])
+          ? data['@graph']
+          : [data];
       for (const node of nodes) {
         const types = normalizeType(node['@type']);
         if (!types.includes('Product')) continue;
@@ -297,7 +302,7 @@ function extractFromJsonLd(): Partial<ExtractedProduct> | null {
           const offerTypes = normalizeType(offer?.['@type']);
           const isAggregate = offerTypes.includes('AggregateOffer');
           if (offerTypes.includes('Offer') && !isAggregate) {
-            offerExpiresAt = offer?.priceValidUntil || null;
+            offerExpiresAt = offer?.priceValidUntil ? toISODate(offer.priceValidUntil) : null;
           } else {
             offerExpiresAt = null;
           }
