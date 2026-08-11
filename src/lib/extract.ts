@@ -2,15 +2,16 @@ import type { ExtractedProduct } from '../types';
 import { normalizeCategory } from './category-map';
 
 interface JsonLdOffer {
-  '@type': string;
+  '@type'?: string | string[];
   price?: string;
+  lowPrice?: string;
   priceCurrency?: string;
   url?: string;
   priceValidUntil?: string;
 }
 
 interface JsonLdProduct {
-  '@type': string;
+  '@type': string | string[];
   name?: string;
   image?: string | string[];
   sku?: string;
@@ -258,22 +259,58 @@ function extractDealText(root: ParentNode = document, storeId?: string): string 
   return best;
 }
 
+function normalizeType(value: string | string[] | undefined): string[] {
+  if (Array.isArray(value)) return value;
+  return value ? [value] : [];
+}
+
 function extractFromJsonLd(): Partial<ExtractedProduct> | null {
   const scripts = document.querySelectorAll<HTMLScriptElement>('script[type="application/ld+json"]');
   for (const script of scripts) {
     try {
       const data = JSON.parse(script.textContent || '');
-      if (data['@type'] === 'Product') {
-        const product = data as JsonLdProduct;
-        const offers = Array.isArray(product.offers) ? product.offers[0] : product.offers;
-        const image = Array.isArray(product.image) ? product.image[0] : product.image;
+      const nodes = Array.isArray(data['@graph']) ? data['@graph'] : [data];
+      for (const node of nodes) {
+        const types = normalizeType(node['@type']);
+        if (!types.includes('Product')) continue;
+
+        const rawOffers = Array.isArray(node['offers'])
+          ? node['offers']
+          : node['offers']
+            ? [node['offers']]
+            : [];
+
+        let price: number | null = null;
+        let offerUrl: string | undefined;
+        let offerExpiresAt: string | null = null;
+
+        for (const offer of rawOffers) {
+          const candidate = Math.min(
+            parsePrice(offer?.price) ?? Infinity,
+            parsePrice(offer?.lowPrice) ?? Infinity
+          );
+          if (candidate === Infinity) continue;
+          if (price !== null && candidate >= price) continue;
+
+          price = candidate;
+          offerUrl = offer?.url;
+          const offerTypes = normalizeType(offer?.['@type']);
+          const isAggregate = offerTypes.includes('AggregateOffer');
+          if (offerTypes.includes('Offer') && !isAggregate) {
+            offerExpiresAt = offer?.priceValidUntil || null;
+          } else {
+            offerExpiresAt = null;
+          }
+        }
+
+        const image = Array.isArray(node['image']) ? node['image'][0] : node['image'];
         return {
-          name: product.name || null,
-          price: parsePrice(offers?.price),
+          name: node['name'] || null,
+          price,
           image_url: image || null,
-          product_url: offers?.url || window.location.href,
-          offer_expires_at: offers?.priceValidUntil || null,
-          category: product.category || null,
+          product_url: offerUrl || window.location.href,
+          offer_expires_at: offerExpiresAt,
+          category: node['category'] || null,
         };
       }
     } catch {
