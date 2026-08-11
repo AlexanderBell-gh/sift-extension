@@ -100,11 +100,11 @@ function toISODate(raw: string): string {
   return raw;
 }
 
-function extractOfferExpiry(): string | null {
+function extractOfferExpiry(storeId?: string): string | null {
   const dateShort = /\d{1,2}\s+\w+\s+\d{4}/;
 
   // ---- Sainsbury's ----
-  if (isStore('sainsburys')) {
+  if (storeId === 'sainsburys') {
     const sainsburysEl = document.querySelector<HTMLElement>('.expiry-date');
     if (sainsburysEl?.textContent) {
       const match = sainsburysEl.textContent.trim().match(dateShort);
@@ -121,7 +121,7 @@ function extractOfferExpiry(): string | null {
   }
 
   // ---- Tesco ----
-  if (isStore('tesco')) {
+  if (storeId === 'tesco') {
     const tescoSel = '.ddsweb-value-bar__terms, [class*="value-bar__terms"], [class*="termsText"]';
     const tescoEls = document.querySelectorAll<HTMLElement>(tescoSel);
     for (const el of tescoEls) {
@@ -132,7 +132,7 @@ function extractOfferExpiry(): string | null {
   }
 
   // ---- Morrisons ----
-  if (isStore('morrisons')) {
+  if (storeId === 'morrisons') {
     const morrisonsEls = document.querySelectorAll<HTMLElement>('[class*="--promotion"]');
     for (const el of morrisonsEls) {
       const text = el.textContent || '';
@@ -152,10 +152,13 @@ function extractOfferExpiry(): string | null {
     new RegExp('valid until[\\s:]\\s*(?:[a-z]{3,9},\\s*)?(' + dateShort.source + ')', 'i'),
     new RegExp('ends?[\\s:]\\s*(?:[a-z]{3,9},\\s*)?(' + dateShort.source + ')', 'i'),
   ];
-  const candidates = document.querySelectorAll<HTMLElement>(
-    '[class*="offer"], [class*="promotion"], [class*="expiry"], [class*="terms"], [data-testid*="offer"], [data-testid*="promotion"], p, span, div'
+  const candidates = qsa<HTMLElement>(
+    '[class*="offer"], [class*="promotion"], [class*="expiry"], [class*="terms"], [data-testid*="offer"], [data-testid*="promotion"], p, span, div',
+    getProductRoot()
   );
+  let scanned = 0;
   for (const el of candidates) {
+    if (++scanned > 200) break;
     const text = el.textContent || '';
     for (const pattern of patterns) {
       const match = text.match(pattern);
@@ -217,11 +220,11 @@ function extractCategory(root: ParentNode = document): string | null {
   return raw ? normalizeCategory(raw) : null;
 }
 
-function extractDealText(root: ParentNode = document): string | null {
+function extractDealText(root: ParentNode = document, storeId?: string): string | null {
   const pattern = /(\d+\s*for\s*£?\s*\d+\.?\d*|for\s*£?\s*\d+\.?\d*)/i;
   let excludeSel = '[class*="carousel"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"]';
   // ---- Morrisons ----
-  if (isStore('morrisons')) {
+  if (storeId === 'morrisons') {
     excludeSel += ', [data-test*="carousel"], [data-test*="related"], [data-test*="recommend"], [data-test*="you-might"]';
   }
   const priceEl = qs<HTMLElement>(
@@ -303,9 +306,10 @@ function getSinglePriceText(root: ParentNode, dealText: string | null): string |
 }
 
 function extractFromDom(): Partial<ExtractedProduct> {
+  const storeId = detectStore()?.id;
   const root = getProductRoot();
 
-  const dealText = extractDealText(root);
+  const dealText = extractDealText(root, storeId);
 
   let priceText: string | null = null;
   let wasPriceText: string | null = null;
@@ -314,7 +318,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
   let title: string | null = null;
 
   // ---- Sainsbury's ----
-  if (isStore('sainsburys')) {
+  if (storeId === 'sainsburys') {
     priceText = getSinglePriceText(root, dealText) || getText([
       '.ds-c-price__price[data-colour="subtle"]',
       '[data-testid="pd-retail-price"]',
@@ -347,7 +351,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
   }
 
   // ---- Tesco ----
-  if (isStore('tesco')) {
+  if (storeId === 'tesco') {
     priceText = getSinglePriceText(root, dealText) || getText([
       '[data-testid="product-tile-price"]',
       '.price-main__integer',
@@ -379,7 +383,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
   }
 
   // ---- ASDA ----
-  if (isStore('asda')) {
+  if (storeId === 'asda') {
     priceText = getSinglePriceText(root, dealText) || getAsdaPrice('was', root) || getAsdaPrice('actual price', root);
     wasPriceText = getText([
       '[data-auto="was-price"]',
@@ -407,7 +411,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
   }
 
   // ---- Morrisons ----
-  if (isStore('morrisons')) {
+  if (storeId === 'morrisons') {
     priceText = getSinglePriceText(root, dealText) || getText([
       '.product-price',
       '.price-main__integer',
@@ -496,7 +500,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
   let finalWasPrice = parsePrice(wasPriceText);
   let finalLoyaltyPrice = parsePrice(loyaltyPriceText);
 
-  if (isStore('morrisons')) {
+  if (storeId === 'morrisons') {
     const promoEls = document.querySelectorAll<HTMLElement>('[class*="--promotion"]');
     for (const el of promoEls) {
       const text = el.textContent || '';
@@ -515,8 +519,8 @@ function extractFromDom(): Partial<ExtractedProduct> {
     price: finalPrice,
     was_price: finalWasPrice,
     loyalty_price: finalLoyaltyPrice,
-    offer_deal: extractDealText(root),
-    offer_expires_at: extractOfferExpiry(),
+    offer_deal: extractDealText(root, storeId),
+    offer_expires_at: extractOfferExpiry(storeId),
     image_url: imageUrl,
     product_url: window.location.href,
     category,
@@ -561,13 +565,7 @@ function detectStore(): { id: string; name: string; logo: string } | null {
   return null;
 }
 
-function isStore(...ids: string[]): boolean {
-  const store = detectStore();
-  return store !== null && ids.includes(store.id);
-}
-
-export function extractProduct(): ExtractedProduct | null {
-  const store = detectStore();
+export function extractProduct(): ExtractedProduct | null {  const store = detectStore();
   if (!store) return null;
 
   const jsonLd = extractFromJsonLd();

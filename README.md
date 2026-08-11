@@ -34,7 +34,7 @@ Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.
 
 ## Category Mapping
 
-Products are auto-categorised into `Chilled, Snacks, Beverages, Produce, Frozen, Bakery, Food Cupboard` (or `Other`) from the product title via keyword scoring, with breadcrumb/JSON-LD fallback. Personal-care items (hand wash, body lotion) are force-routed to `Other`. See `src/lib/category-map.ts` for the rules and full keyword lists, and `CONTEXT.md` for how titles resolve.
+Products are auto-categorised into `Chilled, Snacks, Beverages, Produce, Frozen, Bakery, Food Cupboard` (or `Other`) from the product title via keyword scoring, with breadcrumb/JSON-LD fallback. Short keywords match exact title tokens (substring only for 4+ char keywords); multi-word keywords (`peanut butter`, `ice cream`, `ready meal`) match as whole phrases and outweight single-word hits. Personal-care items (hand wash, body lotion) are force-routed to `Other`. See `src/lib/category-map.ts` for the rules and full keyword lists, and `CONTEXT.md` for how titles resolve.
 
 ## Development
 
