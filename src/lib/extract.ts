@@ -63,7 +63,7 @@ function getText(selectors: string[], root: ParentNode = document): string | nul
   return null;
 }
 
-function getLoyaltyPriceByPattern(root: ParentNode = document): string | null {
+function getLoyaltyPriceByPattern(root: ParentNode = getProductRoot()): string | null {
   const patterns = [
     /(?:nectar|clubcard|member|loyalty|more\s*card|partner)\s*(?:price|saving)?[:\s]*£?\s*(\d+\.?\d*)/i,
     /£\s*(\d+\.?\d*)\s*(?:with|when you use|using)\s*(?:nectar|clubcard|member|loyalty)/i,
@@ -556,7 +556,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     price: finalPrice,
     was_price: finalWasPrice,
     loyalty_price: finalLoyaltyPrice,
-    offer_deal: extractDealText(root, storeId),
+    offer_deal: dealText,
     offer_expires_at: extractOfferExpiry(storeId),
     image_url: imageUrl,
     product_url: window.location.href,

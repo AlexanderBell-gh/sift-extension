@@ -1,4 +1,5 @@
 import type { ExtractedProduct } from '../types';
+import { LOYALTY_LABELS } from './loyalty';
 
 const API_BASE_URL = 'https://siftapi.blackmesa.workers.dev';
 
@@ -18,15 +19,6 @@ export async function addToWatchlist(
 ): Promise<{ success: boolean; error?: string; blocked?: boolean }> {
   const id = hashString(`${product.store}_${product.name}`);
 
-  const loyaltyTypeMap: Record<string, string> = {
-    'Tesco': 'Clubcard',
-    "Sainsbury's": 'Nectar',
-    'Morrisons': 'More Card',
-    'Co-op': 'Member',
-    'Waitrose': 'My Waitrose',
-    'ASDA': 'Rollback',
-  };
-
   const body = {
     result: {
       id,
@@ -41,7 +33,7 @@ export async function addToWatchlist(
         unit_price: null,
         currency: product.currency,
       },
-      loyalty_type: loyaltyTypeMap[product.store] || null,
+      loyalty_type: LOYALTY_LABELS[product.store] || null,
       offer_deal: product.offer_deal || null,
       offer_expires_at: product.offer_expires_at || null,
       category: product.category || null,

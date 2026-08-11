@@ -1,5 +1,6 @@
 import type { ExtractedProduct } from '../../src/types';
 import { addToWatchlist, login } from '../../src/lib/sift-api';
+import { LOYALTY_LABELS } from '../../src/lib/loyalty';
 
 const SIFT_LOGO = `<svg class="header-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -173,15 +174,7 @@ function renderProduct(product: ExtractedProduct) {
     ? `<span class="price-was">£${product.was_price.toFixed(2)}</span>`
     : '';
 
-  const loyaltyLabelMap: Record<string, string> = {
-    'Tesco': 'Clubcard',
-    "Sainsbury's": 'Nectar',
-    'ASDA': 'Rollback',
-    'Morrisons': 'More Card',
-    'Co-op': 'Member',
-    'Waitrose': 'My Waitrose',
-  };
-  const loyaltyLabel = loyaltyLabelMap[product.store] || 'Loyalty';
+  const loyaltyLabel = LOYALTY_LABELS[product.store] || 'Loyalty';
 
   const hasMultiBuy = !!product.offer_deal;
   const loyaltyHtml = !hasMultiBuy && product.loyalty_price != null
