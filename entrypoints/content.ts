@@ -1,5 +1,6 @@
 import type { ExtractedProduct } from '../src/types';
 import { extractProduct } from '../src/lib/extract';
+import { initOverlay } from '../src/lib/overlay';
 
 export default defineContentScript({
   matches: [
@@ -48,5 +49,7 @@ export default defineContentScript({
       }
       return true;
     });
+
+    initOverlay();
   },
 });

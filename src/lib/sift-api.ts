@@ -13,6 +13,23 @@ function hashString(str: string): string {
   return Math.abs(hash).toString(36);
 }
 
+async function apiRequest(url: string, options: RequestInit): Promise<{ ok: boolean; status: number; body: any }> {
+  if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+    return chrome.runtime.sendMessage({
+      action: 'apiRequest',
+      url,
+      options: {
+        method: options.method,
+        headers: options.headers,
+        body: options.body,
+      },
+    });
+  }
+  const response = await fetch(url, options);
+  const body = await response.json().catch(() => ({}));
+  return { ok: response.ok, status: response.status, body };
+}
+
 export async function addToWatchlist(
   token: string,
   product: ExtractedProduct
@@ -42,7 +59,7 @@ export async function addToWatchlist(
     },
   };
 
-  const response = await fetch(`${API_BASE_URL}/api/watchlist`, {
+  const { ok, body: resp } = await apiRequest(`${API_BASE_URL}/api/watchlist`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -51,12 +68,11 @@ export async function addToWatchlist(
     body: JSON.stringify(body),
   });
 
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    if (body.reason === 'watchlist_limit') {
+  if (!ok) {
+    if (resp.reason === 'watchlist_limit') {
       return { success: false, blocked: true, error: 'Trial accounts are limited to 5 watchlist items. Remove some items on siftsearch.pages.dev to add more.' };
     }
-    return { success: false, error: body.error || 'Failed to add to watchlist' };
+    return { success: false, error: resp.error || 'Failed to add to watchlist' };
   }
 
   return { success: true };
