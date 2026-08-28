@@ -14,7 +14,7 @@ Chrome MV3 browser extension for [Sift](https://siftsearch.pages.dev) — UK sup
 
 Browse to any supported store → click the extension icon → review product data → **Add to Watchlist**.
 
-Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.), previous ("was") price, offer expiry, category, and deal terms (multi-buy "Any 3 for £12", meal deals "Meal Deal for £15.00 with Nectar"). Deals show as a pill, and the loyalty line tints to the store brand color for Sainsbury's, Tesco, ASDA, and Morrisons (orange default for other stores); when a deal term is present, items show the single price with the deal pill instead of a per-unit loyalty line.
+Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.), previous ("was") price, offer expiry, category, and deal terms (multi-buy "Any 3 for £12", meal deals "Meal Deal for £15.00 with Nectar"). Long deal text is cleaned at source (strips `- Selected ...` and `- Cheapest Product Free` suffixes). Deals show as a pill with CSS truncation and full-text tooltip, and the loyalty line tints to the store brand color for Sainsbury's, Tesco, ASDA, Morrisons, and M&S (orange default for other stores); when a deal term is present, items show the single price with the deal pill instead of a per-unit loyalty line.
 
 ## Supported Stores
 
@@ -24,7 +24,7 @@ Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.
 | Sainsbury's | Full | Nectar price |
 | ASDA | Full | Rollback promotions (no expiry — counted as on-offer via rollback price) |
 | Morrisons | Full | More Card price; on-offer items show "Now £X, Was £Y" as More Card + regular price |
-| M&S | Partial | — |
+| M&S | Partial | Price + image extraction; deal badge color #242230 |
 | Aldi | Partial | — |
 | Lidl | Partial | — |
 | Co-op | Partial | Member price |

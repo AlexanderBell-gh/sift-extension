@@ -7,6 +7,7 @@ const STORE_COLORS: Record<string, string> = {
   'Tesco': '#00539f',
   'ASDA': '#c21e4d',
   'Morrisons': '#005f27',
+  'M&S': '#242230',
 };
 
 const SIFT_LOGO = `<svg class="header-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -190,7 +191,7 @@ function renderProduct(product: ExtractedProduct) {
     : '';
 
   const dealHtml = product.offer_deal
-    ? `<div class="deal-badge"${storeColor ? ` style="background:${storeColor}"` : ''}>${escapeHtml(product.offer_deal)}</div>`
+    ? `<div class="deal-badge"${storeColor ? ` style="background:${storeColor}"` : ''} title="${escapeHtml(product.offer_deal)}">${escapeHtml(product.offer_deal)}</div>`
     : '';
 
   app.innerHTML = `

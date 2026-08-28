@@ -347,6 +347,14 @@ function getSinglePriceText(root: ParentNode, dealText: string | null): string |
   return null;
 }
 
+function cleanDealText(deal: string | null): string | null {
+  if (!deal) return null;
+  return deal
+    .replace(/\s*-\s*Selected\s+[^-]+$/i, '')
+    .replace(/\s*-\s*Cheapest\s+Product\s+Free/i, '')
+    .trim() || null;
+}
+
 function extractFromDom(): Partial<ExtractedProduct> {
   const storeId = detectStore()?.id;
   const root = getProductRoot();
@@ -478,7 +486,23 @@ function extractFromDom(): Partial<ExtractedProduct> {
     ], root);
   }
 
-  // ---- Generic fallback (M&S, Aldi, Lidl, Co-op, Waitrose, Iceland, Ocado) ----
+  // ---- M&S ----
+  if (storeId === 'marksandspencer') {
+    priceText = getText([
+      '[class*="priceWrapper"]',
+      '.price_priceWrapper__Yp_17',
+    ], root);
+    imageUrl = getAttr([
+      '[class*="image-gallery_slides"] img',
+      '.image-gallery_slides__N8x_w img',
+      'img[class*="image-gallery"]',
+    ], 'src', root);
+    title = getText([
+      'h1',
+    ], root);
+  }
+
+  // ---- Generic fallback (Aldi, Lidl, Co-op, Waitrose, Iceland, Ocado) ----
   priceText = priceText || getSinglePriceText(root, dealText) || getAsdaPrice('was', root) || getAsdaPrice('actual price', root);
   wasPriceText = wasPriceText || getText([
     '[data-auto="was-price"]',
@@ -561,7 +585,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     price: finalPrice,
     was_price: finalWasPrice,
     loyalty_price: finalLoyaltyPrice,
-    offer_deal: dealText,
+    offer_deal: cleanDealText(dealText),
     offer_expires_at: extractOfferExpiry(storeId),
     image_url: imageUrl,
     product_url: window.location.href,
@@ -622,7 +646,7 @@ export function extractProduct(): ExtractedProduct | null {  const store = detec
     price: dom.price ?? jsonLd?.price ?? null,
     loyalty_price: dom.loyalty_price ?? null,
     was_price: dom.was_price ?? null,
-    offer_deal: dom.offer_deal ?? null,
+    offer_deal: cleanDealText(dom.offer_deal),
     offer_expires_at: dom.offer_expires_at ?? jsonLd?.offer_expires_at ?? null,
     image_url: jsonLd?.image_url ?? dom.image_url ?? null,
     product_url: jsonLd?.product_url || dom.product_url || window.location.href,
