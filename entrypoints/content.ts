@@ -25,6 +25,16 @@ export default defineContentScript({
       document.head.appendChild(meta);
       window.postMessage({ type: 'SIFT_EXTENSION_INSTALLED' }, '*');
       document.dispatchEvent(new CustomEvent('sift-extension-installed'));
+
+      window.addEventListener('message', (e) => {
+        if (e.data?.type === 'SIFT_AUTH_TOKEN') {
+          if (e.data.token) {
+            chrome.storage.local.set({ sift_token: e.data.token });
+          } else {
+            chrome.storage.local.remove('sift_token');
+          }
+        }
+      });
     }
 
     chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {

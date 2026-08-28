@@ -1,5 +1,5 @@
 import type { ExtractedProduct } from '../../src/types';
-import { addToWatchlist, login } from '../../src/lib/sift-api';
+import { addToWatchlist } from '../../src/lib/sift-api';
 import { LOYALTY_LABELS } from '../../src/lib/loyalty';
 
 const STORE_COLORS: Record<string, string> = {
@@ -40,8 +40,23 @@ async function init() {
   token = stored.sift_token || '';
 
   if (!token) {
-    renderLogin();
-    return;
+    const tabs = await chrome.tabs.query({ url: ['https://siftsearch.pages.dev/*', 'http://localhost:5173/*'] });
+    if (tabs.length > 0 && tabs[0].id) {
+      try {
+        const response = await chrome.tabs.sendMessage(tabs[0].id, { action: 'getToken' });
+        if (response?.token) {
+          token = response.token;
+          await chrome.storage.local.set({ sift_token: token });
+        }
+      } catch {
+        // Content script not ready or tab unavailable
+      }
+    }
+
+    if (!token) {
+      renderLogin();
+      return;
+    }
   }
 
   renderLoading();
@@ -70,72 +85,15 @@ function renderLogin() {
       ${SIFT_LOGO}
       <h1>Sift</h1>
     </div>
-    <div class="login-form">
-      <p class="subtitle">Sign in to add products to your watchlist.</p>
-      <label for="username">Username</label>
-      <input id="username" type="text" placeholder="Username" />
-      <label for="password">Password</label>
-      <input id="password" type="password" placeholder="Password" />
-      <div id="login-error" class="error-msg"></div>
-      <button class="btn btn-primary" id="login-btn">Sign In</button>
-      <div class="divider"><span>or</span></div>
-      <button class="btn btn-link" id="link-btn">24hr Trial Login</button>
+    <div class="auth-prompt">
+      <p class="auth-prompt-title">Sign in to Sift to get started.</p>
+      <p class="auth-prompt-text">Open siftsearch.pages.dev, sign in to your account, and your session will sync to the extension automatically.</p>
+      <button class="btn btn-primary" id="open-sift-btn">Open Sift</button>
     </div>
   `;
 
-  document.getElementById('login-btn')!.addEventListener('click', async () => {
-    const username = (document.getElementById('username') as HTMLInputElement).value;
-    const password = (document.getElementById('password') as HTMLInputElement).value;
-    const errorEl = document.getElementById('login-error')!;
-    const btn = document.getElementById('login-btn') as HTMLButtonElement;
-
-    btn.disabled = true;
-    btn.textContent = 'Signing in...';
-    errorEl.textContent = '';
-
-    const result = await login(username, password);
-    if (result.error) {
-      errorEl.textContent = result.error;
-      btn.disabled = false;
-      btn.textContent = 'Sign In';
-    } else {
-      token = result.token;
-      await chrome.storage.local.set({ sift_token: token });
-      init();
-    }
-  });
-
-  document.getElementById('link-btn')!.addEventListener('click', async () => {
-    const btn = document.getElementById('link-btn') as HTMLButtonElement;
-    const errorEl = document.getElementById('login-error')!;
-    btn.disabled = true;
-    btn.textContent = 'Linking...';
-    errorEl.textContent = '';
-
-    const tabs = await chrome.tabs.query({ url: 'https://siftsearch.pages.dev/*' });
-    if (tabs.length === 0) {
-      errorEl.textContent = 'Open siftsearch.pages.dev first and sign in.';
-      btn.disabled = false;
-      btn.textContent = '24hr Trial Login';
-      return;
-    }
-
-    try {
-      const response = await chrome.tabs.sendMessage(tabs[0].id!, { action: 'getToken' });
-      if (response?.token) {
-        token = response.token;
-        await chrome.storage.local.set({ sift_token: token });
-        init();
-      } else {
-        errorEl.textContent = 'No session found on siftsearch.pages.dev. Sign in there first.';
-        btn.disabled = false;
-        btn.textContent = '24hr Trial Login';
-      }
-    } catch {
-      errorEl.textContent = 'Cannot reach siftsearch.pages.dev. Reload the page and try again.';
-      btn.disabled = false;
-      btn.textContent = '24hr Trial Login';
-    }
+  document.getElementById('open-sift-btn')!.addEventListener('click', () => {
+    chrome.tabs.create({ url: 'https://siftsearch.pages.dev' });
   });
 }
 
@@ -216,7 +174,6 @@ function renderProduct(product: ExtractedProduct) {
     </div>
     <div class="actions">
       <button class="btn btn-primary" id="add-btn">Add to Watchlist</button>
-      <button class="btn btn-secondary" id="signout-btn">Sign Out</button>
     </div>
   `;
 
@@ -253,12 +210,6 @@ function renderProduct(product: ExtractedProduct) {
       btn.disabled = false;
       btn.textContent = 'Add to Watchlist';
     }
-  });
-
-  document.getElementById('signout-btn')!.addEventListener('click', async () => {
-    await chrome.storage.local.remove('sift_token');
-    token = '';
-    renderLogin();
   });
 }
 
