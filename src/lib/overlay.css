@@ -3,7 +3,7 @@
 /* Overlay card */
 .sift-overlay {
   width: 340px;
-  background: #FFFFFF;
+  background: #F6F6F1;
   border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
   overflow: hidden;
@@ -66,17 +66,18 @@
 /* Body */
 .sift-overlay-body {
   padding: 16px;
+  background: #FFFFFF;
+  border-bottom: 1px solid #E5E7EB;
 }
 
 .sift-product-top {
   display: flex;
   gap: 12px;
-  margin-bottom: 12px;
 }
 
 .sift-product-img {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   border-radius: 8px;
   object-fit: cover;
   background: #F6F6F1;
@@ -87,11 +88,18 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 1.4;
+  margin-top: 2px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   color: #111827;
+}
+
+.sift-product-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 /* Price block */
@@ -100,7 +108,7 @@
   align-items: baseline;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 4px;
+  margin-top: 8px;
 }
 
 .sift-price-current {
@@ -147,7 +155,7 @@
 
 /* Actions */
 .sift-overlay-actions {
-  padding: 0 16px 16px;
+  padding: 16px;
 }
 
 .sift-add-btn {

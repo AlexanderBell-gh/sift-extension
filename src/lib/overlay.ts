@@ -192,7 +192,7 @@ async function renderOverlay(product: ExtractedProduct) {
     : '';
 
   const expiryHtml = product.offer_expires_at
-    ? `<div class="sift-expiry">Expires: ${escapeHtml(formatDate(product.offer_expires_at))}</div>`
+    ? `<div class="sift-expiry">Offer Expires ${escapeHtml(formatDate(product.offer_expires_at))}</div>`
     : '';
 
   const imgHtml = product.image_url
@@ -209,15 +209,17 @@ async function renderOverlay(product: ExtractedProduct) {
     <div class="sift-overlay-body">
       <div class="sift-product-top">
         ${imgHtml}
-        <div class="sift-product-name">${escapeHtml(product.name || 'Unknown product')}</div>
-      </div>
-      <div class="sift-prices">
-        ${priceHtml}
-        ${wasHtml}
-        ${loyaltyHtml}
+        <div class="sift-product-info">
+          <div class="sift-product-name">${escapeHtml(product.name || 'Unknown product')}</div>
+          <div class="sift-prices">
+            ${priceHtml}
+            ${wasHtml}
+            ${loyaltyHtml}
+          </div>
+          ${expiryHtml}
+        </div>
       </div>
       ${dealHtml}
-      ${expiryHtml}
     </div>
     <div class="sift-overlay-actions" id="sift-actions"></div>
   `;
