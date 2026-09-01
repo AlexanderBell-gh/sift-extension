@@ -1,15 +1,3 @@
-import type { ExtractedProduct } from '../../src/types';
-import { addToWatchlist } from '../../src/lib/sift-api';
-import { LOYALTY_LABELS } from '../../src/lib/loyalty';
-
-const STORE_COLORS: Record<string, string> = {
-  "Sainsbury's": '#8223fa',
-  'Tesco': '#00539f',
-  'ASDA': '#c21e4d',
-  'Morrisons': '#005f27',
-  'M&S': '#242230',
-};
-
 const SIFT_LOGO = `<svg class="header-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <mask id="logo-hole">
@@ -20,6 +8,16 @@ const SIFT_LOGO = `<svg class="header-logo" viewBox="0 0 32 32" fill="none" xmln
   <g transform="rotate(-10 16 16)">
     <rect x="6" y="2" width="20" height="28" rx="4" fill="#FF5701" mask="url(#logo-hole)"/>
   </g>
+</svg>`;
+
+const LINK_ICON = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M6.5 9.5L9.5 6.5M7 11L5.5 12.5C4.5 13.5 3 13.5 2 12.5C1 11.5 1 10 2 9L3.5 7.5M9 5L10.5 3.5C11.5 2.5 13 2.5 14 3.5C15 4.5 15 6 14 7L12.5 8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+const LOGOUT_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
 const app = document.getElementById('app')!;
@@ -59,24 +57,7 @@ async function init() {
     }
   }
 
-  renderLoading();
-
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) {
-    renderError('No active tab');
-    return;
-  }
-
-  try {
-    const response = await chrome.tabs.sendMessage(tab.id, { action: 'extract' });
-    if (response?.product) {
-      renderProduct(response.product);
-    } else {
-      renderEmpty();
-    }
-  } catch {
-    renderError('Cannot extract from this page');
-  }
+  renderSettings();
 }
 
 function renderLogin() {
@@ -97,119 +78,47 @@ function renderLogin() {
   });
 }
 
-function renderLoading() {
-  app.innerHTML = `
-    <div class="header">
-      ${SIFT_LOGO}
-      <h1>Sift</h1>
-    </div>
-    <div class="loading">Extracting product data...</div>
-  `;
-}
-
-function renderError(message: string) {
-  app.innerHTML = `
-    <div class="header">
-      ${SIFT_LOGO}
-      <h1>Sift</h1>
-    </div>
-    <div class="error">${escapeHtml(message)}</div>
-  `;
-}
-
-function renderEmpty() {
-  app.innerHTML = `
-    <div class="header">
-      ${SIFT_LOGO}
-      <h1>Sift</h1>
-    </div>
-    <div class="empty">No product found on this page.</div>
-  `;
-}
-
-function renderProduct(product: ExtractedProduct) {
-  const imgHtml = product.image_url
-    ? `<img class="product-img" src="${escapeHtml(product.image_url)}" alt="" />`
-    : `<div class="product-img" style="display:flex;align-items:center;justify-content:center;font-size:24px">🛒</div>`;
-
-  const priceHtml = product.price != null
-    ? `<span class="price-current">£${product.price.toFixed(2)}</span>`
-    : '';
-
-  const wasHtml = product.was_price != null
-    ? `<span class="price-was">£${product.was_price.toFixed(2)}</span>`
-    : '';
-
-  const loyaltyLabel = LOYALTY_LABELS[product.store] || 'Loyalty';
-  const storeColor = STORE_COLORS[product.store];
-
-  const hasMultiBuy = !!product.offer_deal;
-  const loyaltyHtml = !hasMultiBuy && product.loyalty_price != null
-    ? `<span class="price-loyalty"${storeColor ? ` style="color:${storeColor}"` : ''}>${loyaltyLabel} £${product.loyalty_price.toFixed(2)}</span>`
-    : '';
-
-  const dealHtml = product.offer_deal
-    ? `<div class="deal-badge"${storeColor ? ` style="background:${storeColor}"` : ''} title="${escapeHtml(product.offer_deal)}">${escapeHtml(product.offer_deal)}</div>`
-    : '';
+async function renderSettings() {
+  const stored = await chrome.storage.local.get('sift_overlay_position');
+  const position = stored.sift_overlay_position || 'bottom-left';
 
   app.innerHTML = `
     <div class="header">
       ${SIFT_LOGO}
       <h1>Sift</h1>
     </div>
-    <div class="product">
-      <div class="product-top">
-        ${imgHtml}
-        <div class="product-info">
-          <div class="product-store">${escapeHtml(product.store)}</div>
-          <div class="product-name">${escapeHtml(product.name || 'Unknown product')}</div>
-          <div class="prices">
-            ${priceHtml}
-            ${wasHtml}
-            ${loyaltyHtml}
-          </div>
-          ${dealHtml}
-        </div>
+    <div class="settings">
+      <div class="settings-section">
+        <label class="field-label" for="position-select">Overlay Position</label>
+        <select class="form-select" id="position-select">
+          <option value="bottom-left"${position === 'bottom-left' ? ' selected' : ''}>Bottom Left</option>
+          <option value="bottom-right"${position === 'bottom-right' ? ' selected' : ''}>Bottom Right</option>
+          <option value="top-left"${position === 'top-left' ? ' selected' : ''}>Top Left</option>
+          <option value="top-right"${position === 'top-right' ? ' selected' : ''}>Top Right</option>
+        </select>
+      </div>
+      <div class="settings-links">
+        <a class="settings-link" id="watchlist-link" href="https://siftsearch.pages.dev/watchlist" target="_blank">
+          <span class="settings-link-icon">${LINK_ICON}</span>
+          Open Watchlist
+        </a>
+        <button class="settings-link settings-link--danger" id="sign-out-btn">
+          <span class="settings-link-icon">${LOGOUT_ICON}</span>
+          Sign Out
+        </button>
       </div>
     </div>
-    <div class="actions">
-      <button class="btn btn-primary" id="add-btn">Add to Watchlist</button>
-    </div>
   `;
 
-  document.getElementById('add-btn')!.addEventListener('click', async () => {
-    const btn = document.getElementById('add-btn') as HTMLButtonElement;
-    btn.disabled = true;
-    btn.textContent = 'Adding...';
+  document.getElementById('position-select')!.addEventListener('change', async (e) => {
+    const val = (e.target as HTMLSelectElement).value;
+    await chrome.storage.local.set({ sift_overlay_position: val });
+  });
 
-    const result = await addToWatchlist(token, product);
-    if (result.success) {
-      app.innerHTML = `
-        <div class="header">
-          ${SIFT_LOGO}
-          <h1>Sift</h1>
-        </div>
-        <div class="success">Added to watchlist!</div>
-      `;
-    } else if (result.blocked) {
-      app.innerHTML = `
-        <div class="header">
-          ${SIFT_LOGO}
-          <h1>Sift</h1>
-        </div>
-        <div class="blocked">
-          <div class="blocked-icon">!</div>
-          <div class="blocked-title">Watchlist full</div>
-          <p class="blocked-text">Trial accounts are limited to 5 items.</p>
-          <p class="blocked-text">Remove old items on your <a href="https://siftsearch.pages.dev/watchlist" target="_blank">Watchlist</a> to add more.</p>
-          <button class="btn btn-secondary" id="back-btn">Back</button>
-        </div>
-      `;
-      document.getElementById('back-btn')!.addEventListener('click', () => renderProduct(product));
-    } else {
-      btn.disabled = false;
-      btn.textContent = 'Add to Watchlist';
-    }
+  document.getElementById('sign-out-btn')!.addEventListener('click', async () => {
+    await chrome.storage.local.remove('sift_token');
+    token = '';
+    renderLogin();
   });
 }
 

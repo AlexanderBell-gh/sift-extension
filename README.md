@@ -12,9 +12,9 @@ Chrome MV3 browser extension for [Sift](https://siftsearch.pages.dev) — UK sup
 
 ## Usage
 
-Browse to any supported store → click the floating Sift icon (bottom-left) → view extracted product data in the overlay → **Add to Watchlist**.
+Browse to any supported store → click the floating Sift icon → view extracted product data in the overlay → **Add to Watchlist**.
 
-Also works via the extension popup: click the extension icon → review product data → **Add to Watchlist**.
+The extension popup is a settings panel: click the extension icon → configure overlay position (Bottom Left, Bottom Right, Top Left, Top Right), open your Watchlist, or sign out.
 
 Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.), previous ("was") price, offer expiry, category, and deal terms (multi-buy "Any 3 for £12", meal deals "Meal Deal for £15.00 with Nectar"). Long deal text is cleaned at source (strips `- Selected ...` and `- Cheapest Product Free` suffixes). Deals show as a pill with CSS truncation and full-text tooltip, and the loyalty line tints to the store brand color for Sainsbury's, Tesco, ASDA, Morrisons, and M&S (orange default for other stores); when a deal term is present, items show the single price with the deal pill instead of a per-unit loyalty line.
 

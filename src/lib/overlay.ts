@@ -37,6 +37,7 @@ let overlayRoot: HTMLDivElement | null = null;
 let shadowRoot: ShadowRoot | null = null;
 let currentUrl = location.href;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let currentPosition: string = 'bottom-left';
 
 function escapeHtml(value: string): string {
   return value
@@ -58,8 +59,6 @@ function formatDate(iso: string): string {
 const FLOAT_BTN_CSS = `
 .sift-float-btn {
   position: fixed;
-  bottom: 24px;
-  left: 24px;
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -93,17 +92,23 @@ const FLOAT_BTN_CSS = `
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
   transform: scale(0.92) !important;
 }
+.sift-float-btn--bottom-left { bottom: 24px; left: 24px; }
+.sift-float-btn--bottom-right { bottom: 24px; right: 24px; }
+.sift-float-btn--top-left { top: 24px; left: 24px; }
+.sift-float-btn--top-right { top: 24px; right: 24px; }
 .sift-overlay-root {
   position: fixed;
-  bottom: 84px;
-  left: 24px;
   z-index: 999999;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 14px;
   color: #111827;
   -webkit-font-smoothing: antialiased;
   line-height: 1.4;
-}`;
+}
+.sift-overlay-root--bottom-left { bottom: 84px; left: 24px; }
+.sift-overlay-root--bottom-right { bottom: 84px; right: 24px; }
+.sift-overlay-root--top-left { top: 84px; left: 24px; }
+.sift-overlay-root--top-right { top: 84px; right: 24px; }`;
 
 function injectPageStyles() {
   if (document.querySelector('style[data-sift-page-styles]')) return;
@@ -120,12 +125,48 @@ function injectPageStyles() {
   document.head.appendChild(link);
 }
 
+const VALID_POSITIONS = ['bottom-left', 'bottom-right', 'top-left', 'top-right'];
+
+async function loadPosition() {
+  const stored = await chrome.storage.local.get('sift_overlay_position');
+  const pos = stored.sift_overlay_position;
+  if (pos && VALID_POSITIONS.includes(pos)) {
+    currentPosition = pos;
+  }
+}
+
+function applyPosition() {
+  if (floatBtn) {
+    for (const pos of VALID_POSITIONS) {
+      floatBtn.classList.remove(`sift-float-btn--${pos}`);
+    }
+    floatBtn.classList.add(`sift-float-btn--${currentPosition}`);
+  }
+  if (overlayRoot) {
+    for (const pos of VALID_POSITIONS) {
+      overlayRoot.classList.remove(`sift-overlay-root--${pos}`);
+    }
+    overlayRoot.classList.add(`sift-overlay-root--${currentPosition}`);
+  }
+}
+
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.sift_overlay_position) {
+    const newPos = changes.sift_overlay_position.newValue;
+    if (newPos && VALID_POSITIONS.includes(newPos)) {
+      currentPosition = newPos;
+      applyPosition();
+    }
+  }
+});
+
 function createFloatBtn() {
   if (floatBtn) return floatBtn;
   floatBtn = document.createElement('div');
   floatBtn.className = 'sift-float-btn';
   floatBtn.innerHTML = SIFT_LOGO;
   floatBtn.title = 'Sift — View product';
+  applyPosition();
   document.body.appendChild(floatBtn);
   floatBtn.addEventListener('click', onFloatClick);
   return floatBtn;
@@ -163,6 +204,7 @@ async function renderOverlay(product: ExtractedProduct) {
 
   overlayRoot = document.createElement('div');
   overlayRoot.className = 'sift-overlay-root';
+  applyPosition();
   document.body.appendChild(overlayRoot);
 
   shadowRoot = overlayRoot.attachShadow({ mode: 'open' });
@@ -358,8 +400,9 @@ function setupNavigationCleanup() {
   });
 }
 
-export function initOverlay() {
+export async function initOverlay() {
   injectPageStyles();
+  await loadPosition();
   checkStore();
   setupNavigationCleanup();
 }
