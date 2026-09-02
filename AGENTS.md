@@ -45,6 +45,8 @@ public/               Extension icons (SVG, PNG 16/48/128)
 wxt.config.ts         Manifest — permissions, host_permissions, action config
 ```
 
+> For the main Sift `/home/wsl/Projects/Sift`
+
 - Frontend entry: `entrypoints/popup/popup.ts` (WXT wires `popup.html`)
 - Content script entry: `entrypoints/content.ts` → `src/lib/extract.ts`
 - Output: `.output/chrome-mv3/` — load unpacked via `chrome://extensions` → Developer mode
