@@ -54,6 +54,7 @@ export async function addToWatchlist(
       offer_deal: product.offer_deal || null,
       offer_expires_at: product.offer_expires_at || null,
       category: product.category || null,
+      category_signals: product.category_signals || null,
       product_url: product.product_url,
       is_on_offer: !!product.was_price || !!product.offer_expires_at || !!product.loyalty_price || !!product.offer_deal,
     },

@@ -16,7 +16,7 @@ interface JsonLdProduct {
   image?: string | string[];
   sku?: string;
   gtin13?: string;
-  brand?: { name?: string };
+  brand?: { name?: string } | string;
   category?: string;
   offers?: JsonLdOffer | JsonLdOffer[];
   description?: string;
@@ -216,6 +216,15 @@ function hasFrozenSignal(root: ParentNode = document, title: string | null): boo
   return getBreadcrumbCrumbs(root).some(c => /frozen/i.test(c));
 }
 
+function extractBrand(root: ParentNode = document): string | null {
+  const el = qs<HTMLElement>(
+    '[itemprop="brand"], [data-auto*="brand" i], [data-testid*="brand" i], .product-brand, [class*="product-brand"]',
+    root
+  );
+  const text = el?.textContent?.trim() || el?.getAttribute('content');
+  return text || null;
+}
+
 function extractCategory(root: ParentNode = document): string | null {
   const crumbs = getBreadcrumbCrumbs(root);
   const raw = crumbs.length > 0 ? crumbs[crumbs.length - 1] : null;
@@ -265,7 +274,7 @@ function normalizeType(value: string | string[] | undefined): string[] {
   return value ? [value] : [];
 }
 
-function extractFromJsonLd(): Partial<ExtractedProduct> | null {
+function extractFromJsonLd(): (Partial<ExtractedProduct> & { brand?: string | null }) | null {
   const scripts = document.querySelectorAll<HTMLScriptElement>('script[type="application/ld+json"]');
   for (const script of scripts) {
     try {
@@ -309,8 +318,12 @@ function extractFromJsonLd(): Partial<ExtractedProduct> | null {
         }
 
         const image = Array.isArray(node['image']) ? node['image'][0] : node['image'];
+        const brand = typeof node['brand'] === 'string'
+          ? node['brand']
+          : node['brand']?.name || null;
         return {
           name: node['name'] || null,
+          brand,
           price,
           image_url: image || null,
           product_url: offerUrl || window.location.href,
@@ -641,8 +654,20 @@ export function extractProduct(): ExtractedProduct | null {  const store = detec
   const jsonLdFrozen = jsonLd?.category ? /frozen/i.test(jsonLd.category) : false;
   const category = domCategory === 'Frozen' || jsonLdFrozen ? 'Frozen' : domCategory;
 
+  const name = dom.name || jsonLd?.name || null;
+  const crumbs = getBreadcrumbCrumbs();
+  const category_signals = {
+    breadcrumb_raw: crumbs,
+    breadcrumb_leaf: crumbs.length > 0 ? crumbs[crumbs.length - 1] : null,
+    title: name,
+    brand: jsonLd?.brand || extractBrand() || null,
+    store_id: store.id,
+    url_path: window.location.pathname,
+    jsonld_category: jsonLd?.category || null,
+  };
+
   return {
-    name: dom.name || jsonLd?.name || null,
+    name,
     price: dom.price ?? jsonLd?.price ?? null,
     loyalty_price: dom.loyalty_price ?? null,
     was_price: dom.was_price ?? null,
@@ -655,5 +680,6 @@ export function extractProduct(): ExtractedProduct | null {  const store = detec
     store_logo: store.logo,
     unit: null,
     currency: 'GBP',
+    category_signals,
   };
 }

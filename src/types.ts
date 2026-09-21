@@ -1,3 +1,13 @@
+export interface CategorySignals {
+  breadcrumb_raw: string[];
+  breadcrumb_leaf: string | null;
+  title: string | null;
+  brand: string | null;
+  store_id: string;
+  url_path: string;
+  jsonld_category: string | null;
+}
+
 export interface ExtractedProduct {
   name: string;
   price: number | null;
@@ -12,4 +22,5 @@ export interface ExtractedProduct {
   store_logo: string;
   unit: string | null;
   currency: string;
+  category_signals: CategorySignals | null;
 }

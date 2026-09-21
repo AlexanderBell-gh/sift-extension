@@ -4,9 +4,7 @@ const KEYWORD_MAP: Record<string, string[]> = {
     'eggs', 'butter', 'fromage frais', 'quark', 'sour cream',
     'crème fraîche', 'custard', 'dessert', 'deli', 'sandwich',
     'sandwiches', ' wraps', 'pasta salad', 'coleslaw', 'hummus',
-    'dips', 'chilled', 'fresh', 'ham', 'meat', 'beef', 'Salmon, tuna & trout', 'salmon', 'pork belly',
-    'berry', 'berries', 'blueberries', 'blueberry', 'strawberries',
-    'strawberry', 'raspberries', 'raspberry', 'kiwi',
+    'dips', 'chilled', 'ham', 'meat', 'beef', 'Salmon, tuna & trout', 'salmon', 'pork belly',
   ],
   Snacks: [
     'crisps', 'chips', 'nuts', 'snack', 'snacks', 'bar', 'bars',
@@ -28,7 +26,7 @@ const KEYWORD_MAP: Record<string, string[]> = {
     'tomato', 'potato', 'onion', 'carrot', 'pepper', 'mushroom',
     'broccoli', 'spinach', 'kale', 'cucumber', 'avocado', 'citrus',
     'melon', 'grapes',
-    'produce', 'fresh produce', 'loose',
+    'produce', 'fresh produce', 'loose', 'kiwi',
   ],
   Frozen: [
     'frozen', 'ice cream', 'ice-cream', 'ice creams', 'gelato',
@@ -52,6 +50,7 @@ const KEYWORD_MAP: Record<string, string[]> = {
     'peanut butter', 'honey', 'syrup', 'chutney', 'pickle',
     'relish', 'soup', 'broth', 'stock cube', 'bouillon cube',
     'packet', 'sachet', 'jar', 'bottle', 'oats', 'jumbo oats', 'oreo',
+    'flapjack', 'flapjacks', 'oat', 'oat boosts',
   ],
 };
 

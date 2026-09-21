@@ -17,10 +17,10 @@
 ## Commands
 
 ```bash
-pnpm install
-pnpm run dev          # watch mode (WXT)
-pnpm run build        # production build
-pnpm run zip          # package for distribution
+rtk pnpm install
+rtk pnpm run dev          # watch mode (WXT)
+rtk pnpm run build        # production build
+rtk pnpm run zip          # package for distribution
 ```
 
 **No lint, test, typecheck, or formatter commands exist.**
@@ -67,10 +67,10 @@ wxt.config.ts         Manifest — permissions, host_permissions, action config
 Use git to see what changed recently rather than reading file lists:
 
 ```bash
-git log -n 5 --stat           # last 5 commits with file stats
-git status                    # uncommitted changes
-git diff                      # unstaged changes
-git diff --cached             # staged changes
+rtk git log -n 5 --stat           # last 5 commits with file stats
+rtk git status                    # uncommitted changes
+rtk git diff                      # unstaged changes
+rtk git diff --cached             # staged changes
 ```
 
 ## External Documentation
