@@ -258,10 +258,10 @@ async function renderOverlay(product: ExtractedProduct) {
             ${wasHtml}
             ${loyaltyHtml}
           </div>
+          ${dealHtml}
           ${expiryHtml}
         </div>
       </div>
-      ${dealHtml}
     </div>
     <div class="sift-overlay-actions" id="sift-actions"></div>
   `;
