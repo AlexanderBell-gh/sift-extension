@@ -6,6 +6,7 @@ export interface CategorySignals {
   store_id: string;
   url_path: string;
   jsonld_category: string | null;
+  storage_text: string | null;
 }
 
 export interface ExtractedProduct {

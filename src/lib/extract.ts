@@ -231,6 +231,67 @@ function extractCategory(root: ParentNode = document): string | null {
   return raw ? normalizeCategory(raw) : null;
 }
 
+const STORAGE_PATTERN = /refrigerat|keep chilled|microwave from chilled|keep cool|serve chilled|store in a cool dry|cool dry|do not freeze|do not refreeze|suitable for (home )?freez|keep frozen|store frozen|ambient|store cupboard|no refrigeration|use by|eat within|-18/i;
+
+function extractStorageSentence(text: string): string | null {
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+  if (!STORAGE_PATTERN.test(cleaned)) return null;
+  const sentences = cleaned.split(/(?<=[.!?;])\s+|\n+/);
+  for (const sentence of sentences) {
+    if (STORAGE_PATTERN.test(sentence)) {
+      const trimmed = sentence.trim();
+      if (trimmed) return trimmed.slice(0, 300);
+    }
+  }
+  const match = cleaned.match(STORAGE_PATTERN);
+  if (match?.index !== undefined) {
+    return cleaned.slice(Math.max(0, match.index - 120), match.index + 180).trim().slice(0, 300);
+  }
+  return null;
+}
+
+function extractStorageText(root: ParentNode = document, storeId?: string): string | null {
+  const storeSelectors: Record<string, string[]> = {
+    sainsburys: [
+      '[class*="preparation"]', '[class*="storage"]', '[class*="cooking"]',
+      '[data-auto*="preparation"]', '[data-auto*="storage"]', '[data-auto*="cooking"]',
+      '.pd__preparation', '.pd__storage',
+    ],
+    tesco: [
+      '[class*="preparation"]', '[class*="storage"]', '[class*="cooking"]',
+      '[data-testid*="preparation"]', '[data-testid*="storage"]', '[data-testid*="cooking"]',
+      '[class*="product-info"]',
+    ],
+  };
+  const targeted = [
+    ...(storeId && storeSelectors[storeId] ? storeSelectors[storeId] : []),
+    '[class*="storage"]', '[class*="preparation"]', '[class*="cooking-instruction"]',
+    '[data-testid*="storage"]', '[data-testid*="preparation"]', '[itemprop="storageInstructions"]',
+  ];
+  if (targeted.length > 0) {
+    const els = qsa<HTMLElement>(targeted.join(','), root);
+    for (const el of els) {
+      const hit = el.textContent ? extractStorageSentence(el.textContent) : null;
+      if (hit) return hit;
+    }
+  }
+
+  const excludeSel = '[class*="carousel"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [class*="header"], [class*="footer"], [class*="nav"]';
+  const candidates = qsa<HTMLElement>('p, li, td, dd, span, div', root);
+  let scanned = 0;
+  for (const el of candidates) {
+    if (++scanned > 400) break;
+    if (el.closest(excludeSel)) continue;
+    const text = el.textContent || '';
+    if (text.length === 0 || text.length > 600) continue;
+    // Leaf-ish nodes only: skip containers echoing many child matches.
+    if (el.children.length > 4) continue;
+    const hit = extractStorageSentence(text);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 function extractDealText(root: ParentNode = document, storeId?: string): string | null {
   const pattern = /(\d+\s*for\s*£?\s*\d+\.?\d*|for\s*£?\s*\d+\.?\d*)/i;
   let excludeSel = '[class*="carousel"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"]';
@@ -664,6 +725,7 @@ export function extractProduct(): ExtractedProduct | null {  const store = detec
     store_id: store.id,
     url_path: window.location.pathname,
     jsonld_category: jsonLd?.category || null,
+    storage_text: extractStorageText(getProductRoot(), store.id),
   };
 
   return {

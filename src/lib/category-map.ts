@@ -5,6 +5,9 @@ const KEYWORD_MAP: Record<string, string[]> = {
     'crème fraîche', 'custard', 'dessert', 'deli', 'sandwich',
     'sandwiches', ' wraps', 'pasta salad', 'coleslaw', 'hummus',
     'dips', 'chilled', 'ham', 'meat', 'beef', 'Salmon, tuna & trout', 'salmon', 'pork belly',
+    'chicken', 'chicken breast', 'poultry', 'turkey', 'duck', 'pork', 'lamb',
+    'prawn', 'prawns', 'shrimp', 'mince', 'steak', 'meatballs', 'kebab', 'shawarma',
+    'ready meal', 'ready meals', 'high protein', 'grain bowl',
   ],
   Snacks: [
     'crisps', 'chips', 'nuts', 'snack', 'snacks', 'bar', 'bars',
@@ -30,8 +33,8 @@ const KEYWORD_MAP: Record<string, string[]> = {
   ],
   Frozen: [
     'frozen', 'ice cream', 'ice-cream', 'ice creams', 'gelato',
-    'sorbet', 'fries', 'chips', 'pizza', 'ready meal',
-    'ready meals', 'vegetable', 'peas', 'sweetcorn',
+    'sorbet', 'fries', 'chips', 'pizza',
+    'vegetable', 'peas', 'sweetcorn',
   ],
   Bakery: [
     'bread', 'bakery', 'cake', 'cakes', 'pastry', 'pastries',
