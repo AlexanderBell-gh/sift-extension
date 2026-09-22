@@ -20,6 +20,21 @@ const LOGOUT_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
   <path d="M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
+const CHECK_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M5 13l4 4L19 7" stroke="#FF5701" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+const CHEVRON_ICON = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+const POSITIONS = [
+  { value: 'bottom-left', label: 'Bottom Left' },
+  { value: 'bottom-right', label: 'Bottom Right' },
+  { value: 'top-left', label: 'Top Left' },
+  { value: 'top-right', label: 'Top Right' },
+];
+
 const app = document.getElementById('app')!;
 
 function escapeHtml(value: string): string {
@@ -89,13 +104,21 @@ async function renderSettings() {
     </div>
     <div class="settings">
       <div class="settings-section">
-        <label class="field-label" for="position-select">Overlay Position</label>
-        <select class="form-select" id="position-select">
-          <option value="bottom-left"${position === 'bottom-left' ? ' selected' : ''}>Bottom Left</option>
-          <option value="bottom-right"${position === 'bottom-right' ? ' selected' : ''}>Bottom Right</option>
-          <option value="top-left"${position === 'top-left' ? ' selected' : ''}>Top Left</option>
-          <option value="top-right"${position === 'top-right' ? ' selected' : ''}>Top Right</option>
-        </select>
+        <span class="field-label" id="position-label">Overlay Position</span>
+        <div class="pos-wrap" id="position-wrap">
+          <button type="button" class="pos-trigger" id="position-trigger" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="position-label position-trigger-label">
+            <span id="position-trigger-label">${escapeHtml(POSITIONS.find(p => p.value === position)?.label || 'Bottom Left')}</span>
+            <span class="pos-chevron">${CHEVRON_ICON}</span>
+          </button>
+          <div class="pos-panel" id="position-panel" role="listbox" aria-labelledby="position-label" hidden>
+            ${POSITIONS.map(p => `
+              <button type="button" class="pos-option${p.value === position ? ' pos-option-selected' : ''}" role="option" aria-selected="${p.value === position ? 'true' : 'false'}" data-value="${p.value}">
+                <span class="pos-option-label">${p.label}</span>
+                <span class="pos-checkmark">${p.value === position ? CHECK_ICON : ''}</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
       </div>
       <div class="settings-links">
         <a class="settings-link" id="watchlist-link" href="https://siftsearch.pages.dev/watchlist" target="_blank">
@@ -110,9 +133,72 @@ async function renderSettings() {
     </div>
   `;
 
-  document.getElementById('position-select')!.addEventListener('change', async (e) => {
-    const val = (e.target as HTMLSelectElement).value;
+  const wrap = document.getElementById('position-wrap')!;
+  const trigger = document.getElementById('position-trigger') as HTMLButtonElement;
+  const triggerLabel = document.getElementById('position-trigger-label')!;
+  const panel = document.getElementById('position-panel')!;
+  const options = [...panel.querySelectorAll<HTMLButtonElement>('.pos-option')];
+  let isOpen = false;
+
+  function setOpen(open: boolean) {
+    isOpen = open;
+    trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    panel.hidden = !open;
+    if (open) {
+      options.find(o => o.getAttribute('aria-selected') === 'true')?.focus();
+    }
+  }
+
+  async function selectOption(option: HTMLButtonElement) {
+    const val = option.dataset.value!;
     await chrome.storage.local.set({ sift_overlay_position: val });
+    triggerLabel.textContent = POSITIONS.find(p => p.value === val)?.label || val;
+    for (const o of options) {
+      const selected = o === option;
+      o.setAttribute('aria-selected', selected ? 'true' : 'false');
+      o.classList.toggle('pos-option-selected', selected);
+      o.querySelector('.pos-checkmark')!.innerHTML = selected ? CHECK_ICON : '';
+    }
+    setOpen(false);
+    trigger.focus();
+  }
+
+  trigger.addEventListener('click', () => setOpen(!isOpen));
+
+  for (const option of options) {
+    option.addEventListener('click', () => selectOption(option));
+  }
+
+  document.addEventListener('mousedown', (e) => {
+    if (isOpen && !wrap.contains(e.target as Node)) setOpen(false);
+  });
+
+  wrap.addEventListener('focusout', (e) => {
+    if (isOpen && !wrap.contains((e as FocusEvent).relatedTarget as Node)) setOpen(false);
+  });
+
+  wrap.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isOpen) {
+      setOpen(false);
+      trigger.focus();
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!isOpen) {
+        setOpen(true);
+        return;
+      }
+      const idx = options.indexOf(document.activeElement as HTMLButtonElement);
+      const next = e.key === 'ArrowDown'
+        ? options[(idx + 1) % options.length]
+        : options[(idx - 1 + options.length) % options.length];
+      next.focus();
+    } else if (e.key === 'Home' && isOpen) {
+      e.preventDefault();
+      options[0].focus();
+    } else if (e.key === 'End' && isOpen) {
+      e.preventDefault();
+      options[options.length - 1].focus();
+    }
   });
 
   document.getElementById('sign-out-btn')!.addEventListener('click', async () => {

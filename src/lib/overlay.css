@@ -8,6 +8,11 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
   overflow: hidden;
   animation: sift-slide-up 0.2s ease;
+  transition: opacity 0.2s ease;
+}
+
+.sift-overlay.is-closing {
+  opacity: 0;
 }
 
 @keyframes sift-slide-up {
@@ -154,9 +159,12 @@
   color: #6B7280;
 }
 
-/* Actions */
+/* Actions — fixed-height crossfade stage, no layout jump */
 .sift-overlay-actions {
+  position: relative;
   padding: 16px;
+  min-height: 78px;
+  box-sizing: border-box;
 }
 
 .sift-add-btn {
@@ -168,7 +176,7 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.15s ease;
   background: #FF5701;
   color: #FFFFFF;
 }
@@ -182,15 +190,42 @@
 }
 
 .sift-add-btn:disabled {
-  background: #E5E7EB;
-  color: #6B7280;
   cursor: not-allowed;
 }
 
-.sift-add-btn-success {
-  background: #16A34A;
-  color: #FFFFFF;
-  cursor: default;
+.sift-add-btn:disabled:not(.is-pending) {
+  background: #E5E7EB;
+  color: #6B7280;
+}
+
+.sift-add-btn.is-pending {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: wait;
+}
+
+.sift-add-btn.is-leaving {
+  opacity: 0;
+  transform: scale(0.96);
+  pointer-events: none;
+}
+
+.sift-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #FFFFFF;
+  animation: sift-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes sift-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Auth message */
@@ -256,19 +291,45 @@
   text-decoration: underline;
 }
 
-/* Checkmark animation */
+/* Checkmark — overlays button slot, draws in on success */
 .sift-checkmark {
+  position: absolute;
+  inset: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 16px;
+  padding: 0;
   gap: 8px;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+  pointer-events: none;
+}
+
+.sift-checkmark.is-visible {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .sift-checkmark svg {
   width: 24px;
   height: 24px;
   color: #16A34A;
+}
+
+.sift-checkmark svg path {
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+}
+
+.sift-checkmark.is-visible svg path {
+  animation: sift-draw-check 0.35s ease-out 0.05s forwards;
+}
+
+@keyframes sift-draw-check {
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 .sift-checkmark span {
@@ -283,4 +344,21 @@
   font-size: 13px;
   color: #DC2626;
   text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sift-overlay,
+  .sift-add-btn,
+  .sift-checkmark {
+    animation: none;
+    transition: none;
+  }
+
+  .sift-checkmark svg path {
+    stroke-dashoffset: 0;
+  }
+
+  .sift-checkmark.is-visible svg path {
+    animation: none;
+  }
 }

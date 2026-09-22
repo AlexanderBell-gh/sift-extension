@@ -306,22 +306,43 @@ async function handleAddToWatchlist(token: string, product: ExtractedProduct, co
   const addBtn = container.querySelector('#sift-add-btn') as HTMLButtonElement | null;
   if (addBtn) {
     addBtn.disabled = true;
-    addBtn.textContent = 'Adding...';
+    addBtn.classList.add('is-pending');
+    addBtn.innerHTML = `<span class="sift-spinner"></span><span>Adding...</span>`;
   }
+
+  const restoreBtn = () => {
+    if (addBtn) {
+      addBtn.disabled = false;
+      addBtn.classList.remove('is-pending');
+      addBtn.textContent = 'Add to Watchlist';
+    }
+  };
 
   try {
     const result = await addToWatchlist(token, product);
 
     if (result.success) {
-      container.innerHTML = `
-        <div class="sift-checkmark">
-          ${CHECK_ICON}
-          <span>Added to watchlist</span>
-        </div>
+      const check = document.createElement('div');
+      check.className = 'sift-checkmark';
+      check.innerHTML = `
+        ${CHECK_ICON}
+        <span>Added to watchlist</span>
       `;
+      container.appendChild(check);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          addBtn?.classList.add('is-leaving');
+          check.classList.add('is-visible');
+        });
+      });
+      setTimeout(() => addBtn?.remove(), 300);
       setTimeout(() => {
-        destroyOverlay();
-        document.removeEventListener('keydown', onEscapeKey);
+        const overlay = shadowRoot?.querySelector('.sift-overlay');
+        overlay?.classList.add('is-closing');
+        setTimeout(() => {
+          destroyOverlay();
+          document.removeEventListener('keydown', onEscapeKey);
+        }, 220);
       }, 1500);
     } else if (result.blocked) {
       container.innerHTML = `
@@ -332,17 +353,11 @@ async function handleAddToWatchlist(token: string, product: ExtractedProduct, co
         </div>
       `;
     } else {
-      if (addBtn) {
-        addBtn.disabled = false;
-        addBtn.textContent = 'Add to Watchlist';
-      }
+      restoreBtn();
     }
   } catch (e) {
     console.error('[Sift overlay] add to watchlist failed:', e);
-    if (addBtn) {
-      addBtn.disabled = false;
-      addBtn.textContent = 'Add to Watchlist';
-    }
+    restoreBtn();
   }
 }
 
