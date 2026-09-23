@@ -87,7 +87,7 @@ Whenever the user says **"lets finish up and update the docs"**, you MUST perfor
    * Location: `home/wsl/Repositories/markdowns/sift-markdowns/extension/MEMORY.md`
    
  ### **Format:**
-     ### 📝 [DD-MM-YYYY] @ [GMT HH:MM 24-hr] | [Short Session Title]
+     ### 📝 [DD-MM-YYYY] @ [UK HH:MM 24-hr] | [Short Session Title]
      * **Changes:** [One-sentence summary of what was accomplished].
      * **Impacted Files:** `[file_1.ext]`, `[file_2.ext]`.
      * **Left Off At:** [One-sentence summary of outstanding next steps].
