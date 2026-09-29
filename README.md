@@ -36,7 +36,7 @@ Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.
 
 ## Category Mapping
 
-Products are auto-categorised into `Chilled, Snacks, Beverages, Produce, Frozen, Bakery, Food Cupboard` (or `Other`) from the product title via keyword scoring, with breadcrumb/JSON-LD fallback. Short keywords match exact title tokens (substring only for 4+ char keywords); multi-word keywords (`peanut butter`, `ice cream`, `ready meal`, `oat boosts`) match as whole phrases and outweight single-word hits. Flavour words (berry names) and bare `fresh` are deliberately not keywords — they must not decide categories. Personal-care items (hand wash, body lotion) are force-routed to `Other`. The extension also sends raw `category_signals` (breadcrumb trail, title, brand, store id, URL path, JSON-LD category, storage-instructions text) with each watchlist add so the Sift backend can own taxonomy centrally. See `src/lib/category-map.ts` for the rules and full keyword lists.
+The extension does not guess categories. The Sift worker (`workers/lib/category.js`, `TAXONOMY_VERSION = 3` in the main Sift repo) is the single source of truth for watchlist taxonomy. Every watchlist add sends `category: null` plus raw `category_signals` (breadcrumb trail, title, brand, store id, URL path, JSON-LD category, storage-instructions text), which the worker scores server-side. Client-side keyword guessing was removed in v0.3.0 (it mis-filed noisy breadcrumbs as Frozen); all taxonomy changes happen worker-side.
 
 ## Development
 

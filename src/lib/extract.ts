@@ -1,5 +1,4 @@
 import type { ExtractedProduct } from '../types';
-import { normalizeCategory } from './category-map';
 
 interface JsonLdOffer {
   '@type'?: string | string[];
@@ -211,11 +210,6 @@ function getBreadcrumbCrumbs(root: ParentNode = document): string[] {
   return crumbs;
 }
 
-function hasFrozenSignal(root: ParentNode = document, title: string | null): boolean {
-  if (title && /frozen/i.test(title)) return true;
-  return getBreadcrumbCrumbs(root).some(c => /frozen/i.test(c));
-}
-
 function extractBrand(root: ParentNode = document): string | null {
   const el = qs<HTMLElement>(
     '[itemprop="brand"], [data-auto*="brand" i], [data-testid*="brand" i], .product-brand, [class*="product-brand"]',
@@ -223,12 +217,6 @@ function extractBrand(root: ParentNode = document): string | null {
   );
   const text = el?.textContent?.trim() || el?.getAttribute('content');
   return text || null;
-}
-
-function extractCategory(root: ParentNode = document): string | null {
-  const crumbs = getBreadcrumbCrumbs(root);
-  const raw = crumbs.length > 0 ? crumbs[crumbs.length - 1] : null;
-  return raw ? normalizeCategory(raw) : null;
 }
 
 const STORAGE_PATTERN = /refrigerat|keep chilled|microwave from chilled|keep cool|serve chilled|store in a cool dry|cool dry|do not freeze|do not refreeze|suitable for (home )?freez|keep frozen|store frozen|ambient|store cupboard|no refrigeration|use by|eat within|-18/i;
@@ -629,12 +617,8 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '[data-testid="txt-pdp-product-name"]',
   ], root);
 
-  const titleCategory = title ? normalizeCategory(title) : 'Other';
-  const category = hasFrozenSignal(root, title)
-    ? 'Frozen'
-    : titleCategory === 'Other'
-      ? extractCategory(root) ?? 'Other'
-      : titleCategory;
+  // Worker owns taxonomy. Client sends null guess plus signals.
+  const category: string | null = null;
 
   let finalPrice = parsePrice(priceText);
   let finalWasPrice = parsePrice(wasPriceText);
@@ -711,9 +695,9 @@ export function extractProduct(): ExtractedProduct | null {  const store = detec
   const jsonLd = extractFromJsonLd();
   const dom = extractFromDom();
 
-  const domCategory = dom.category === 'Other' ? jsonLd?.category ?? dom.category : dom.category;
-  const jsonLdFrozen = jsonLd?.category ? /frozen/i.test(jsonLd.category) : false;
-  const category = domCategory === 'Frozen' || jsonLdFrozen ? 'Frozen' : domCategory;
+  // Worker owns taxonomy. Top-level guess always null.
+  // Raw jsonLd.category stays inside category_signals only.
+  const category: string | null = null;
 
   const name = dom.name || jsonLd?.name || null;
   const crumbs = getBreadcrumbCrumbs();

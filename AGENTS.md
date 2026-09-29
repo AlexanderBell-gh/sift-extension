@@ -35,12 +35,12 @@ entrypoints/
     index.html        Popup shell (inline styles, 320px width)
     popup.ts          Popup logic — login, product display, add to watchlist
 src/
-  types.ts            ExtractedProduct interface
+  types.ts            ExtractedProduct + CategorySignals interfaces
   lib/
-    extract.ts        DOM + JSON-LD product extraction (core logic, ~635 lines)
-    category-map.ts   Keyword-based product categorisation
+    extract.ts        DOM + JSON-LD product extraction (category always null, worker owns taxonomy)
     sift-api.ts       Auth + watchlist API client
     loyalty.ts        Per-store loyalty label mapping
+    overlay.ts/css    Floating button + Shadow DOM overlay
 public/               Extension icons (SVG, PNG 16/48/128)
 wxt.config.ts         Manifest — permissions, host_permissions, action config
 ```
@@ -58,6 +58,7 @@ wxt.config.ts         Manifest — permissions, host_permissions, action config
 - **Extraction strategy**: JSON-LD + DOM merge, DOM priority. Scoped to `<main>` via `getProductRoot()`. Store-specific selectors for prices, expiry, category.
 - **Token storage**: `chrome.storage.local` key `sift_token`. API URL hardcoded in `src/lib/sift-api.ts`.
 - **Trial accounts**: limited to 5 watchlist items, enforced server-side by `watchlist_limit` response.
+- **Category taxonomy lives server-side** (`../Sift/workers/lib/category.js`, `TAXONOMY_VERSION = 3`). Extension sends `category: null` + `category_signals`. Never re-add keyword guessing.
 - **ASDA rollbacks** have no expiry — counted as on-offer via rollback price.
 - **Morrisons "Now £X, Was £Y"** pattern is handled as More Card + regular price, not loyalty.
 - **`sharp`** is a devDependency (icon processing). If install fails on some systems, it is the likely cause.
@@ -92,16 +93,18 @@ Whenever the user says **"lets finish up and update the docs"**, you MUST perfor
      * **Impacted Files:** `[file_1.ext]`, `[file_2.ext]`.
      * **Left Off At:** [One-sentence summary of outstanding next steps].
 
-2. **Update CONTEXT.md:**
+2. **Update ARCHITECTURE.md:**
    * Review the current architectural state, tech stack details, or data flows.
-   * Update any outdated sections to reflect the exact state of the codebase at the end of this session.
-   * Location: `home/wsl/Repositories/markdowns/sift-markdowns/extension/CONTEXT.md`
+   * Update any outdated sections to reflect the exact state of the codebase at the end of this session. Keep it under ~200 lines.
+   * Location: `home/wsl/Repositories/markdowns/sift-markdowns/extension/ARCHITECTURE.md`
 
 3. **Update README.md:**
    * Review `README.md`. If the session introduced new features, configuration keys (`.env`), or changed installation/build commands, update those specific sections. Do not alter stable project descriptions unless explicitly relevant.
    * Location: `/home/wsl/Repositories/sift-extension/README.md`
 
-4. **Guard AGENTS.md (Strict Rule):**
-   * **DO NOT** update `AGENTS.md` unless it is completely necessary. 
-   * Updates to this file are strictly reserved for critical, sweeping architectural shifts, fundamental changes to the core tech stack, or major global project rules. Do not modify it for routine features, refactors, or bug fixes - this is to be kept very lean.
+4. **Update AGENTS.md:** 
+   * Updates to this file are strictly reserved for critical, sweeping architectural shifts, fundamental changes to the core tech stack, or major global project rules. Do not modify it for routine features, refactors, or bug fixes. Keep it under ~200 lines
    * Location: `/home/wsl/Repositories/sift-extension/AGENTS.md`
+
+5. **Commit Message**
+   * Once docs are upto date suggest a quick commit message with either `feat:`, `polish:` etc
