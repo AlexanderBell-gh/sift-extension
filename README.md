@@ -14,6 +14,8 @@ Chrome MV3 browser extension for [Sift](https://siftsearch.pages.dev) — UK sup
 
 Browse to any supported store → click the floating Sift icon → view extracted product data in the overlay → **Add to Watchlist**.
 
+The button appears only on product pages (detected via JSON-LD Product data or name + price). On home, category, and search pages it stays hidden; if a click ever lands on a non-product page, the overlay shows a "No product detected on this page" message instead of an empty product.
+
 The extension popup is a settings panel: click the extension icon → configure overlay position (Bottom Left, Bottom Right, Top Left, Top Right), open your Watchlist, or sign out.
 
 Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.), previous ("was") price, offer expiry, category, and deal terms (multi-buy "Any 3 for £12", meal deals "Meal Deal for £15.00 with Nectar"). Long deal text is cleaned at source (strips `- Selected ...` and `- Cheapest Product Free` suffixes). Deals show as a pill with CSS truncation and full-text tooltip, and the loyalty line tints to the store brand color for Sainsbury's, Tesco, ASDA, Morrisons, and M&S (orange default for other stores); when a deal term is present, items show the single price with the deal pill instead of a per-unit loyalty line.
@@ -25,8 +27,8 @@ Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.
 | Tesco | Full | Clubcard price |
 | Sainsbury's | Full | Nectar price |
 | ASDA | Full | Rollback promotions (no expiry — counted as on-offer via rollback price) |
-| Morrisons | Full | More Card price; on-offer items show "Now £X, Was £Y" as More Card + regular price |
-| M&S | Partial | Price + image extraction; deal badge color #242230 |
+| Morrisons | Full | More Card price; "Now £X, Was £Y" and 2-number price containers show regular + More Card; promotion cards ("£X - More Card Price") captured with expiry |
+| M&S | Partial | Price + product image (active gallery slide); deal badge color #242230 |
 | Aldi | Partial | — |
 | Lidl | Partial | — |
 | Co-op | Partial | Member price |

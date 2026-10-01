@@ -1,5 +1,5 @@
 import type { ExtractedProduct } from '../types';
-import { extractProduct } from './extract';
+import { extractProduct, hasProductPageSignal } from './extract';
 import { addToWatchlist } from './sift-api';
 import { LOYALTY_LABELS } from './loyalty';
 import overlayCss from './overlay.css?inline';
@@ -37,6 +37,9 @@ let overlayRoot: HTMLDivElement | null = null;
 let shadowRoot: ShadowRoot | null = null;
 let currentUrl = location.href;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let productRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let productRetryAttempts = 0;
+const MAX_PRODUCT_RETRIES = 5;
 let currentPosition: string = 'bottom-left';
 
 function escapeHtml(value: string): string {
@@ -234,7 +237,7 @@ async function renderOverlay(product: ExtractedProduct) {
     : '';
 
   const expiryHtml = product.offer_expires_at
-    ? `<div class="sift-expiry">Offer Expires ${escapeHtml(formatDate(product.offer_expires_at))}</div>`
+    ? `<div class="sift-expiry">Offer Expires: ${escapeHtml(formatDate(product.offer_expires_at))}</div>`
     : '';
 
   const imgHtml = product.image_url
@@ -366,13 +369,75 @@ async function handleAddToWatchlist(token: string, product: ExtractedProduct, co
   }
 }
 
+// Fallback when the button passes the page signal but extraction comes
+// back incomplete (late render, detection false positive). Never shows
+// an empty "Unknown product" overlay.
+function renderNoProductMessage(storeLabel: string) {
+  destroyOverlay();
+
+  floatBtn?.classList.add('sift-float-btn-pressed');
+
+  overlayRoot = document.createElement('div');
+  overlayRoot.className = 'sift-overlay-root';
+  applyPosition();
+  document.body.appendChild(overlayRoot);
+
+  shadowRoot = overlayRoot.attachShadow({ mode: 'open' });
+
+  const style = document.createElement('style');
+  style.textContent = overlayCss;
+  shadowRoot.appendChild(style);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'sift-overlay';
+  overlay.innerHTML = `
+    <div class="sift-overlay-header">
+      <span class="sift-store-label">${escapeHtml(storeLabel)}</span>
+      <button class="sift-close-btn" aria-label="Close">${CLOSE_ICON}</button>
+    </div>
+    <div class="sift-overlay-body">
+      <div class="sift-auth-msg">
+        <p>No product detected on this page.</p>
+        <p>Open a product page to track prices.</p>
+      </div>
+    </div>
+  `;
+  shadowRoot.appendChild(overlay);
+
+  overlay.querySelector('.sift-close-btn')!.addEventListener('click', destroyOverlay);
+  document.addEventListener('keydown', onEscapeKey);
+}
+
 function onFloatClick() {
   const product = extractProduct();
   if (!product) {
     hideFloatBtn();
     return;
   }
+  if (product.name == null || product.price == null) {
+    renderNoProductMessage(product.store);
+    return;
+  }
   renderOverlay(product);
+}
+
+function cancelProductRetry() {
+  if (productRetryTimer) {
+    clearTimeout(productRetryTimer);
+    productRetryTimer = null;
+  }
+  productRetryAttempts = 0;
+}
+
+// PDP data often renders after the 300ms navigation debounce. Re-check a
+// few times so a slow product page does not leave the button hidden.
+function scheduleProductRetry() {
+  if (productRetryTimer || productRetryAttempts >= MAX_PRODUCT_RETRIES) return;
+  productRetryAttempts++;
+  productRetryTimer = setTimeout(() => {
+    productRetryTimer = null;
+    checkStore();
+  }, 400);
 }
 
 function checkStore() {
@@ -391,8 +456,15 @@ function checkStore() {
 
   if (isStore) {
     createFloatBtn();
-    showFloatBtn();
+    if (hasProductPageSignal()) {
+      cancelProductRetry();
+      showFloatBtn();
+    } else {
+      hideFloatBtn();
+      scheduleProductRetry();
+    }
   } else {
+    cancelProductRetry();
     removeFloatBtn();
     destroyOverlay();
   }
@@ -405,6 +477,7 @@ function setupNavigationCleanup() {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         destroyOverlay();
+        cancelProductRetry();
         checkStore();
       }, 300);
     }

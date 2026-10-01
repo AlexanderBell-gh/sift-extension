@@ -49,7 +49,7 @@ function getProductRoot(): HTMLElement | Document {
 
 // Carousel / cross-sell nodes live inside <main> and contaminate broad scans.
 // Hero containers below hold only the main PDP price block.
-const EXCLUDE_SEL = '[class*="carousel"], [class*="Carousel"], [class*="ddsweb-carousel"], [class*="ds-c-carousel"], [class*="carousel__"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"], [data-test*="carousel"], [data-test*="recommend"]';
+const EXCLUDE_SEL = '[class*="carousel"], [class*="Carousel"], [class*="ddsweb-carousel"], [class*="ds-c-carousel"], [class*="carousel__"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"], [data-test*="carousel"], [data-test*="recommend"], [data-testid="product-information-roundel"], [data-testid*="roundel"]';
 
 function isExcluded(el: Element | null | undefined): boolean {
   try {
@@ -410,7 +410,11 @@ function extractStorageText(root: ParentNode = document, storeId?: string): stri
 }
 
 function extractDealText(root: ParentNode = document, storeId?: string): string | null {
-  const pattern = /(\d+\s*for\s*£?\s*\d+\.?\d*|for\s*£?\s*\d+\.?\d*)/i;
+  // Second branch requires £: bare "for 4" (freshness copy: "Typically fresh
+  // for 4 days") must never qualify. Multibuy without £ stays covered by
+  // the first branch (\d+ for \d+: "3 for 2").
+  const pattern = /(\d+\s*for\s*£?\s*\d+\.?\d*|for\s*£\s*\d+\.?\d*)/i;
+  const FRESHNESS_RE = /typically|fresh\s+for|use\s+within|eat\s+within|keep\s+(chilled|refrigerated|frozen)|best\s+before/i;
   let excludeSel = EXCLUDE_SEL;
   // ---- Morrisons ----
   if (storeId === 'morrisons') {
@@ -432,6 +436,7 @@ function extractDealText(root: ParentNode = document, storeId?: string): string 
     if (el.closest(excludeSel)) continue;
     const text = el.textContent?.trim() || '';
     if (text.length === 0 || text.length > 120) continue;
+    if (FRESHNESS_RE.test(text)) continue;
     if (!pattern.test(text)) continue;
 
     const isCaption = el.classList.contains('caption-module') || el.closest('[class*="caption-module"]') != null;
@@ -632,8 +637,8 @@ function extractFromDom(): Partial<ExtractedProduct> {
 
   // ---- ASDA ----
   if (storeId === 'asda') {
-    priceText = getSinglePriceText(priceScope, dealText) || getAsdaPrice('was', priceScope) || getAsdaPrice('actual price', priceScope);
-    wasPriceText = getText([
+    priceText = getSinglePriceText(priceScope, dealText) || getAsdaPrice('actual price', priceScope);
+    wasPriceText = getAsdaPrice('was', priceScope) || getText([
       '[data-auto="was-price"]',
       '.price--was',
       '.product-price--previous',
@@ -646,7 +651,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
       '[data-testid*="reduced"]',
       '[class*="price-lock"]',
       '[data-testid*="price-lock"]',
-    ], priceScope) || getAsdaPrice('actual price', priceScope) || getLoyaltyPriceByPattern(priceScope);
+    ], priceScope) || getLoyaltyPriceByPattern(priceScope);
     imageUrl = getAttr([
       'img[data-testid="img"]',
       '.product-image img',
@@ -690,18 +695,30 @@ function extractFromDom(): Partial<ExtractedProduct> {
       '[class*="priceWrapper"]',
       '.price_priceWrapper__Yp_17',
     ], priceScope);
-    imageUrl = getAttr([
-      '[class*="image-gallery_slides"] img',
-      '.image-gallery_slides__N8x_w img',
-      'img[class*="image-gallery"]',
-    ], 'src', root);
+    // Gallery li class contains "carousel" (image-grid-and-carousel) —
+    // EXCLUDE_SEL drops it inside getAttr. Scan directly: these selectors
+    // target the PDP gallery only, safe without the cross-sell exclusion.
+    const gallerySels = [
+      '[class*="image-gallery_isCurrent"] img',
+      'img[data-tagg="gallery-image"]',
+      '[class*="image-gallery_slide"] img',
+    ];
+    imageUrl = null;
+    for (const sel of gallerySels) {
+      const img = qs<HTMLImageElement>(sel, root);
+      const src = img?.getAttribute('src');
+      if (src) {
+        imageUrl = src;
+        break;
+      }
+    }
     title = getText([
       'h1',
     ], root);
   }
 
   // ---- Generic fallback (Aldi, Lidl, Co-op, Waitrose, Iceland, Ocado) ----
-  priceText = priceText || getSinglePriceText(priceScope, dealText) || getAsdaPrice('was', priceScope) || getAsdaPrice('actual price', priceScope);
+  priceText = priceText || getSinglePriceText(priceScope, dealText) || getAsdaPrice('actual price', priceScope) || getAsdaPrice('was', priceScope);
   wasPriceText = wasPriceText || getText([
     '[data-auto="was-price"]',
     '.price--was',
@@ -733,7 +750,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '[data-testid*="asda-price"]',
     '[class*="price-lock"]',
     '[data-testid*="price-lock"]',
-  ], priceScope) || getAsdaPrice('actual price', priceScope) || getLoyaltyPriceByPattern(priceScope);
+  ], priceScope) || getLoyaltyPriceByPattern(priceScope);
 
   imageUrl = imageUrl || getAttr([
     'img.pd__image',
@@ -763,18 +780,90 @@ function extractFromDom(): Partial<ExtractedProduct> {
     finalLoyaltyPrice = null;
   }
 
+  // ASDA rollback: DOM labels "was £4.20 / actual price £4.00". Rollback is
+  // loyalty pricing, not a was-strikethrough. Show was as regular price,
+  // actual as Rollback price, no was_price. Regular item (actual only)
+  // falls through untouched.
+  if (storeId === 'asda' && finalWasPrice != null && finalPrice != null) {
+    finalLoyaltyPrice = finalPrice;
+    finalPrice = finalWasPrice;
+    finalWasPrice = null;
+  }
+
   if (storeId === 'morrisons') {
-    const promoEls = (priceScope as ParentNode).querySelectorAll<HTMLElement>('[class*="--promotion"]');
-    for (const el of promoEls) {
-      if (isExcluded(el)) continue;
-      const text = el.textContent || '';
-      const match = text.match(/Now\s*£([\d.]+),?\s*Was\s*£([\d.]+)/i);
-      if (match) {
-        finalPrice = parseFloat(match[2]);
-        finalLoyaltyPrice = parseFloat(match[1]);
-        finalWasPrice = null;
-        break;
+    // Promo price-container: promoted span + strikethrough original
+    // (data-test="bop-price-original"). Two numbers = More Card offer:
+    // original as regular price, promoted as More Card loyalty price.
+    // Single number = regular price capture (this markup misses all
+    // class-based price selectors).
+    let handled = false;
+    const priceContainers = (priceScope as ParentNode).querySelectorAll<HTMLElement>('[data-test="price-container"]');
+    for (const container of priceContainers) {
+      if (isExcluded(container)) continue;
+      const spans = container.querySelectorAll<HTMLElement>('span');
+      const numbers: { el: HTMLElement; value: number }[] = [];
+      for (const span of spans) {
+        const text = span.textContent?.trim() || '';
+        const m = text.match(/£\s*(\d+\.?\d*)/);
+        if (m) numbers.push({ el: span, value: parseFloat(m[1]) });
       }
+      if (numbers.length === 1) {
+        finalPrice = numbers[0].value;
+        continue;
+      }
+      if (numbers.length !== 2) continue;
+      let original = numbers.find(n => n.el.getAttribute('data-test') === 'bop-price-original');
+      let promoted = numbers.find(n => n.el !== original);
+      if (!original || !promoted) {
+        // Fallback: markup order is promoted first, original second.
+        promoted = numbers[0];
+        original = numbers[1];
+      }
+      if (original.value === promoted.value) continue;
+      finalPrice = original.value;
+      finalLoyaltyPrice = promoted.value;
+      finalWasPrice = null;
+      handled = true;
+      break;
+    }
+
+    if (!handled) {
+      const promoEls = (priceScope as ParentNode).querySelectorAll<HTMLElement>('[class*="--promotion"]');
+      for (const el of promoEls) {
+        if (isExcluded(el)) continue;
+        const text = el.textContent || '';
+        const match = text.match(/Now\s*£([\d.]+),?\s*Was\s*£([\d.]+)/i);
+        if (match) {
+          finalPrice = parseFloat(match[2]);
+          finalLoyaltyPrice = parseFloat(match[1]);
+          finalWasPrice = null;
+          break;
+        }
+      }
+    }
+
+    // Promotions-window card: "£3.00 - More Card Price" (h3 or promo text).
+    // Loyalty only when container/Now-Was paths did not set it. First £ wins:
+    // unit price "£13.64/kg" sits after "More Card Price", never matches.
+    if (finalLoyaltyPrice == null) {
+      const cardPattern = /£\s*(\d+\.?\d*)\s*[-–—]?\s*More\s*Card\s*Price/i;
+      const cardHeads = (priceScope as ParentNode).querySelectorAll<HTMLElement>('h3[class*="--promotion"], [class*="--promotion"]');
+      for (const el of cardHeads) {
+        if (isExcluded(el)) continue;
+        const text = el.textContent?.trim() || '';
+        if (text.length === 0 || text.length > 120) continue;
+        const match = text.match(cardPattern);
+        if (match) {
+          finalLoyaltyPrice = parseFloat(match[1]);
+          break;
+        }
+      }
+    }
+
+    // Equality recheck: card loyalty duplicating regular price is a
+    // false positive. Drop loyalty, keep price (regular-item display).
+    if (finalLoyaltyPrice != null && finalPrice != null && finalLoyaltyPrice === finalPrice) {
+      finalLoyaltyPrice = null;
     }
   }
 
@@ -830,6 +919,14 @@ function detectStore(): { id: string; name: string; logo: string } | null {
     return { id: 'ocado', name: 'Ocado', logo: '/Ocado_Logo.svg' };
   }
   return null;
+}
+
+// Composite product-page signal: JSON-LD Product node OR extracted
+// name + price. Drives overlay button visibility on store pages.
+export function hasProductPageSignal(): boolean {
+  if (extractFromJsonLd() != null) return true;
+  const dom = extractFromDom();
+  return dom.name != null && dom.price != null;
 }
 
 export function extractProduct(): ExtractedProduct | null {  const store = detectStore();
