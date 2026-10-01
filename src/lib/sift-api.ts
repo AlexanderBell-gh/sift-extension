@@ -33,7 +33,7 @@ async function apiRequest(url: string, options: RequestInit): Promise<{ ok: bool
 export async function addToWatchlist(
   token: string,
   product: ExtractedProduct
-): Promise<{ success: boolean; error?: string; blocked?: boolean }> {
+): Promise<{ success: boolean; error?: string; blocked?: boolean; reason?: string }> {
   const id = hashString(`${product.store}_${product.name}`);
 
   const body = {
@@ -71,7 +71,10 @@ export async function addToWatchlist(
 
   if (!ok) {
     if (resp.reason === 'watchlist_limit') {
-      return { success: false, blocked: true, error: 'Trial accounts are limited to 5 watchlist items. Remove some items on siftsearch.pages.dev to add more.' };
+      return { success: false, blocked: true, reason: 'watchlist_limit', error: 'Trial accounts are limited to 5 watchlist items. Remove some items on siftsearch.pages.dev to add more.' };
+    }
+    if (resp.reason === 'trial_expired' || resp.blocked) {
+      return { success: false, blocked: true, reason: 'trial_expired', error: 'Trial expired. Upgrade to keep adding items.' };
     }
     return { success: false, error: resp.error || 'Failed to add to watchlist' };
   }

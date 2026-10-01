@@ -47,6 +47,97 @@ function getProductRoot(): HTMLElement | Document {
   return sel || document;
 }
 
+// Carousel / cross-sell nodes live inside <main> and contaminate broad scans.
+// Hero containers below hold only the main PDP price block.
+const EXCLUDE_SEL = '[class*="carousel"], [class*="Carousel"], [class*="ddsweb-carousel"], [class*="ds-c-carousel"], [class*="carousel__"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"], [data-test*="carousel"], [data-test*="recommend"]';
+
+function isExcluded(el: Element | null | undefined): boolean {
+  try {
+    return !!el?.closest?.(EXCLUDE_SEL);
+  } catch {
+    return false;
+  }
+}
+
+const HERO_SELS: Record<string, string[]> = {
+  sainsburys: [
+    '[data-testid="pdp-meta-sticky"]',
+    '[data-testid="gw-product-price-container"]',
+    '[data-testid="gw-product-retail-price"]',
+  ],
+  tesco: [
+    // Title section first: stable across hashed renames, holds price +
+    // promotion + terms together, excludes the sticky banner (sibling outside
+    // the section) automatically. :has supported Chrome 105+.
+    'section:has([data-auto="pdp-product-title"])',
+    '[class*="clubcard-promotion"]',
+    '[data-auto="pdp-buy-box-quantity-controls-container"]',
+    '[data-auto="pdp-buy-box"]',
+    '[data-auto="pdp-product-tile-messaging"]',
+  ],
+};
+
+function getHeroRoot(storeId?: string): ParentNode {
+  const sels = (storeId && HERO_SELS[storeId]) || [];
+  const seen = new Set<Element>();
+  const cands: HTMLElement[] = [];
+  for (const sel of sels) {
+    let els: NodeListOf<HTMLElement>;
+    try {
+      els = document.querySelectorAll<HTMLElement>(sel);
+    } catch {
+      continue;
+    }
+    for (const el of els) {
+      if (seen.has(el)) continue;
+      seen.add(el);
+      if (isExcluded(el) || isHidden(el)) continue;
+      if (cands.length >= 10) break;
+      cands.push(el);
+    }
+  }
+  if (cands.length === 0) return getProductRoot();
+  // Tesco renders hidden breakpoint duplicates + a sticky banner holding the
+  // regular price only. Score candidates so the container holding the offer
+  // (loyalty + terms) wins over price-only copies. Tie = document order.
+  let best = cands[0] as HTMLElement;
+  let bestScore = -1;
+  for (const c of cands) {
+    const sc = scoreHeroCandidate(c);
+    if (sc > bestScore) {
+      bestScore = sc;
+      best = c;
+    }
+  }
+  return best;
+}
+
+function isHidden(el: HTMLElement): boolean {
+  if (el.hasAttribute('hidden')) return true;
+  try {
+    if (el.getClientRects().length === 0) return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+const HERO_LOYALTY_MARKER = '.ds-c-price__price[data-colour="nectar"], [data-auto="clubcard-price"], .price--clubcard, .clubcard-price, [data-testid="clubcard-price"], [data-testid="contextual-price-text"], .ddsweb-value-bar__content-text, .nectar-offer, [class*="nectar-price"], [data-testid*="nectar"], [class*="more-card"], [class*="member-price"], [class*="loyalty"]';
+const HERO_OFFER_MARKER = '.ddsweb-value-bar__terms, [class*="value-bar__terms"], [class*="termsText"], [class*="alert__message"], .ds-c-alert, .expiry-date, [class*="--promotion"]';
+const HERO_PRICE_MARKER = '.ds-c-price__price[data-colour="subtle"], .online-components-product-tile-price__text, [data-testid="product-tile-price"], [data-testid="pd-retail-price"], [data-testid="txt-pdp-product-price"]';
+
+function scoreHeroCandidate(el: HTMLElement): number {
+  let score = 0;
+  try {
+    if (el.querySelector(HERO_LOYALTY_MARKER)) score += 4;
+    if (el.querySelector(HERO_OFFER_MARKER)) score += 2;
+    if (el.querySelector(HERO_PRICE_MARKER)) score += 1;
+  } catch {
+    // Static selectors only; ignore query failures.
+  }
+  return score;
+}
+
 function qs<K extends HTMLElement>(sel: string, root: ParentNode): K | null {
   return root.querySelector<K>(sel);
 }
@@ -57,8 +148,11 @@ function qsa<K extends HTMLElement>(sel: string, root: ParentNode): NodeListOf<K
 
 function getText(selectors: string[], root: ParentNode = document): string | null {
   for (const sel of selectors) {
-    const el = qs<HTMLElement>(sel, root);
-    if (el?.textContent?.trim()) return el.textContent.trim();
+    const els = (root as ParentNode).querySelectorAll<HTMLElement>(sel);
+    for (const el of els) {
+      if (isExcluded(el)) continue;
+      if (el?.textContent?.trim()) return el.textContent.trim();
+    }
   }
   return null;
 }
@@ -73,7 +167,11 @@ function getLoyaltyPriceByPattern(root: ParentNode = getProductRoot()): string |
     root
   );
   for (const el of candidates) {
+    if (isExcluded(el)) continue;
+    // Skip aggregating containers (carousel cards bundle heading + many prices).
+    if (el.children.length > 6) continue;
     const text = el.textContent || '';
+    if (text.length === 0 || text.length > 300) continue;
     for (const pattern of patterns) {
       const match = text.match(pattern);
       if (match) return match[0];
@@ -101,51 +199,75 @@ function toISODate(raw: string): string {
   return raw;
 }
 
-function extractOfferExpiry(storeId?: string): string | null {
+function extractOfferExpiry(storeId?: string, hero?: ParentNode, hasOfferSignal?: boolean): string | null {
+  // Trusted store banners are self-qualifying: Sainsbury alert, Tesco terms,
+  // Morrisons promotion nodes only render with a real offer, so they return
+  // ungated. The generic fallback below stays gated on hasOfferSignal.
+  const heroScope: ParentNode = hero || getProductRoot();
+  const pageScope: ParentNode = getProductRoot();
+  // Trusted banners (Sainsbury alert, Tesco terms) can sit outside the hero
+  // price container as page-level siblings. Search hero first, page second.
+  const scopes: ParentNode[] = heroScope === pageScope ? [heroScope] : [heroScope, pageScope];
   const dateShort = /\d{1,2}\s+\w+\s+\d{4}/;
 
   // ---- Sainsbury's ----
   if (storeId === 'sainsburys') {
-    const sainsburysEl = document.querySelector<HTMLElement>('.expiry-date');
-    if (sainsburysEl?.textContent) {
-      const match = sainsburysEl.textContent.trim().match(dateShort);
-      if (match) return toISODate(match[0]);
-    }
+    for (const scope of scopes) {
+      const sainsburysEl = (scope as ParentNode).querySelector<HTMLElement>('.expiry-date');
+      if (sainsburysEl && !isExcluded(sainsburysEl) && sainsburysEl?.textContent) {
+        const match = sainsburysEl.textContent.trim().match(dateShort);
+        if (match) return toISODate(match[0]);
+      }
 
-    const sainsburysAlert = document.querySelector<HTMLElement>(
-      '[class*="alert__message"], [class*="alert-message"], .ds-c-alert'
-    );
-    if (sainsburysAlert?.textContent) {
-      const match = sainsburysAlert.textContent.match(/(\d{1,2}\s+\w+\s+\d{4})/);
-      if (match) return toISODate(match[1]);
+      const sainsburysAlerts = (scope as ParentNode).querySelectorAll<HTMLElement>(
+        '[class*="alert__message"], [class*="alert-message"], .ds-c-alert'
+      );
+      for (const alertEl of sainsburysAlerts) {
+        if (isExcluded(alertEl) || !alertEl?.textContent) continue;
+        const text = alertEl.textContent;
+        if (text.length > 500) continue;
+        // Site-wide alerts (cookies, baskets) carry dates too. Only offer banners qualify.
+        if (!/nectar|offer|price|save/i.test(text)) continue;
+        const match = text.match(/(\d{1,2}\s+\w+\s+\d{4})/);
+        if (match) return toISODate(match[1]);
+      }
     }
   }
 
   // ---- Tesco ----
   if (storeId === 'tesco') {
     const tescoSel = '.ddsweb-value-bar__terms, [class*="value-bar__terms"], [class*="termsText"]';
-    const tescoEls = document.querySelectorAll<HTMLElement>(tescoSel);
-    for (const el of tescoEls) {
-      const text = el.textContent?.trim() || '';
-      const match = text.match(/until\s+(\d{2}\/\d{2}\/\d{4})/);
-      if (match) return toISODate(match[1]);
+    for (const scope of scopes) {
+      const tescoEls = (scope as ParentNode).querySelectorAll<HTMLElement>(tescoSel);
+      for (const el of tescoEls) {
+        if (isExcluded(el)) continue;
+        const text = el.textContent?.trim() || '';
+        if (!/offer|clubcard|promotion/i.test(text)) continue;
+        const match = text.match(/until\s+(\d{2}\/\d{2}\/\d{4})/);
+        if (match) return toISODate(match[1]);
+      }
     }
   }
 
   // ---- Morrisons ----
   if (storeId === 'morrisons') {
-    const morrisonsEls = document.querySelectorAll<HTMLElement>('[class*="--promotion"]');
-    for (const el of morrisonsEls) {
-      const text = el.textContent || '';
-      if (!/offer/i.test(text)) continue;
-      const match =
-        text.match(/(?:order\s*by|until|before|valid until)\s+(\d{2}\/\d{2}\/\d{4})/i) ||
-        text.match(/(\d{2}\/\d{2}\/\d{4})/);
-      if (match) return toISODate(match[1]);
+    for (const scope of scopes) {
+      const morrisonsEls = (scope as ParentNode).querySelectorAll<HTMLElement>('[class*="--promotion"]');
+      for (const el of morrisonsEls) {
+        if (isExcluded(el)) continue;
+        const text = el.textContent || '';
+        if (!/offer/i.test(text)) continue;
+        const match =
+          text.match(/(?:order\s*by|until|before|valid until)\s+(\d{2}\/\d{2}\/\d{4})/i) ||
+          text.match(/(\d{2}\/\d{2}\/\d{4})/);
+        if (match) return toISODate(match[1]);
+      }
     }
   }
 
-  // ---- Generic fallback ----
+  // ---- Generic fallback: gated, hero-scoped, offer containers only ----
+  // Never bare p/span/div: Tesco carousel titles leaked dates onto regular items.
+  if (!hasOfferSignal) return null;
   const patterns = [
     /until\s+(\d{2}\/\d{2}\/\d{4})/,
     new RegExp('until[\\s:]\\s*(?:[a-z]{3,9},\\s*)?(' + dateShort.source + ')', 'i'),
@@ -154,13 +276,15 @@ function extractOfferExpiry(storeId?: string): string | null {
     new RegExp('ends?[\\s:]\\s*(?:[a-z]{3,9},\\s*)?(' + dateShort.source + ')', 'i'),
   ];
   const candidates = qsa<HTMLElement>(
-    '[class*="offer"], [class*="promotion"], [class*="expiry"], [class*="terms"], [data-testid*="offer"], [data-testid*="promotion"], p, span, div',
-    getProductRoot()
+    '[class*="offer"], [class*="promotion"], [class*="expiry"], [class*="terms"], [data-testid*="offer"], [data-testid*="promotion"]',
+    heroScope
   );
   let scanned = 0;
   for (const el of candidates) {
     if (++scanned > 200) break;
+    if (isExcluded(el)) continue;
     const text = el.textContent || '';
+    if (text.length === 0 || text.length > 300) continue;
     for (const pattern of patterns) {
       const match = text.match(pattern);
       if (match) return toISODate(match[1]);
@@ -171,21 +295,26 @@ function extractOfferExpiry(storeId?: string): string | null {
 
 function getAttr(selectors: string[], attr: string, root: ParentNode = document): string | null {
   for (const sel of selectors) {
-    const el = qs<HTMLElement>(sel, root);
-    const val = el?.getAttribute(attr);
-    if (val) return val;
+    const els = (root as ParentNode).querySelectorAll<HTMLElement>(sel);
+    for (const el of els) {
+      if (isExcluded(el)) continue;
+      const val = el?.getAttribute(attr);
+      if (val) return val;
+    }
   }
   return null;
 }
 
 function getAsdaPrice(label: string, root: ParentNode = document): string | null {
-  const container = qs<HTMLElement>('[data-testid="txt-pdp-product-price"]', root);
-  if (!container) return null;
-  const paragraphs = qsa<HTMLElement>('p', container);
-  for (const p of paragraphs) {
-    const span = qs<HTMLElement>('span', p);
-    if (span?.textContent?.trim().toLowerCase() === label) {
-      return p.textContent?.trim() || null;
+  const containers = (root as ParentNode).querySelectorAll<HTMLElement>('[data-testid="txt-pdp-product-price"]');
+  for (const container of containers) {
+    if (isExcluded(container)) continue;
+    const paragraphs = container.querySelectorAll<HTMLElement>('p');
+    for (const p of paragraphs) {
+      const span = p.querySelector<HTMLElement>('span');
+      if (span?.textContent?.trim().toLowerCase() === label) {
+        return p.textContent?.trim() || null;
+      }
     }
   }
   return null;
@@ -282,10 +411,10 @@ function extractStorageText(root: ParentNode = document, storeId?: string): stri
 
 function extractDealText(root: ParentNode = document, storeId?: string): string | null {
   const pattern = /(\d+\s*for\s*£?\s*\d+\.?\d*|for\s*£?\s*\d+\.?\d*)/i;
-  let excludeSel = '[class*="carousel"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"]';
+  let excludeSel = EXCLUDE_SEL;
   // ---- Morrisons ----
   if (storeId === 'morrisons') {
-    excludeSel += ', [data-test*="carousel"], [data-test*="related"], [data-test*="recommend"], [data-test*="you-might"]';
+    excludeSel += ', [data-test*="you-might"]';
   }
   const priceEl = qs<HTMLElement>(
     '[data-testid="txt-pdp-product-price"], [class*="product-pricing"], [data-testid*="contextual-price"], [class*="value-bar"], .ds-c-price',
@@ -400,11 +529,14 @@ function getSinglePriceText(root: ParentNode, dealText: string | null): string |
     '.online-components-product-tile-price__text',
   ];
   for (const sel of selectors) {
-    const el = qs<HTMLElement>(sel, root);
-    const text = el?.textContent?.trim();
-    if (!text) continue;
-    if (dealText && dealText.length > 3 && text.includes(dealText)) continue;
-    return text;
+    const els = (root as ParentNode).querySelectorAll<HTMLElement>(sel);
+    for (const el of els) {
+      if (isExcluded(el)) continue;
+      const text = el?.textContent?.trim();
+      if (!text) continue;
+      if (dealText && dealText.length > 3 && text.includes(dealText)) continue;
+      return text;
+    }
   }
   return null;
 }
@@ -420,8 +552,11 @@ function cleanDealText(deal: string | null): string | null {
 function extractFromDom(): Partial<ExtractedProduct> {
   const storeId = detectStore()?.id;
   const root = getProductRoot();
+  const hero = getHeroRoot(storeId);
+  // Price signals come from hero only. Title / image may live outside buy-box.
+  const priceScope = hero;
 
-  const dealText = extractDealText(root, storeId);
+  const dealText = extractDealText(priceScope, storeId) || extractDealText(root, storeId);
 
   let priceText: string | null = null;
   let wasPriceText: string | null = null;
@@ -431,26 +566,27 @@ function extractFromDom(): Partial<ExtractedProduct> {
 
   // ---- Sainsbury's ----
   if (storeId === 'sainsburys') {
-    priceText = getSinglePriceText(root, dealText) || getText([
+    priceText = getSinglePriceText(priceScope, dealText) || getText([
       '.ds-c-price__price[data-colour="subtle"]',
       '[data-testid="pd-retail-price"]',
       '.pd__cost__retail-price',
-    ], root);
+    ], priceScope);
     wasPriceText = getText([
       '[data-auto="was-price"]',
       '.price--was',
       '.product-price--previous',
       '.pt__cost__retail-price--was',
       '[data-testid="was-price"]',
-    ], root);
+    ], priceScope);
+    // Strict: Nectar badge only inside hero price container.
+    // .pd__cost--price removed: regular price container, not loyalty.
+    // No loose pattern fallback: carousel upsell text caused false loyalty.
     loyaltyPriceText = getText([
       '.ds-c-price__price[data-colour="nectar"]',
-      '.pd__cost--price',
       '.nectar-offer',
       '[class*="nectar-price"]',
       '[data-testid*="nectar"]',
-      '.product-pricing__nectar',
-    ], root) || getLoyaltyPriceByPattern(root);
+    ], priceScope);
     imageUrl = getAttr([
       'img.pd__image',
       'img[data-auto="product-image"]',
@@ -464,16 +600,16 @@ function extractFromDom(): Partial<ExtractedProduct> {
 
   // ---- Tesco ----
   if (storeId === 'tesco') {
-    priceText = getSinglePriceText(root, dealText) || getText([
+    priceText = getSinglePriceText(priceScope, dealText) || getText([
       '[data-testid="product-tile-price"]',
       '.price-main__integer',
       '.product-price',
-    ], root);
+    ], priceScope);
     wasPriceText = getText([
       '[data-auto="was-price"]',
       '.product-price--previous',
       '[data-testid="was-price"]',
-    ], root);
+    ], priceScope);
     loyaltyPriceText = getText([
       '[data-auto="clubcard-price"]',
       '.price--clubcard',
@@ -481,7 +617,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
       '[data-testid="clubcard-price"]',
       '[data-testid="contextual-price-text"]',
       '.ddsweb-value-bar__content-text',
-    ], root) || getLoyaltyPriceByPattern(root);
+    ], priceScope) || getLoyaltyPriceByPattern(priceScope);
     imageUrl = getAttr([
       'img[src*="digitalcontent.api.tesco.com"]',
       '[data-testid="product-tile-image"] img',
@@ -496,13 +632,13 @@ function extractFromDom(): Partial<ExtractedProduct> {
 
   // ---- ASDA ----
   if (storeId === 'asda') {
-    priceText = getSinglePriceText(root, dealText) || getAsdaPrice('was', root) || getAsdaPrice('actual price', root);
+    priceText = getSinglePriceText(priceScope, dealText) || getAsdaPrice('was', priceScope) || getAsdaPrice('actual price', priceScope);
     wasPriceText = getText([
       '[data-auto="was-price"]',
       '.price--was',
       '.product-price--previous',
       '[data-testid="was-price"]',
-    ], root);
+    ], priceScope);
     loyaltyPriceText = getText([
       '[data-testid="contextual-price-text"]',
       '[class*="asda-price"]',
@@ -510,7 +646,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
       '[data-testid*="reduced"]',
       '[class*="price-lock"]',
       '[data-testid*="price-lock"]',
-    ], root) || getAsdaPrice('actual price', root) || getLoyaltyPriceByPattern(root);
+    ], priceScope) || getAsdaPrice('actual price', priceScope) || getLoyaltyPriceByPattern(priceScope);
     imageUrl = getAttr([
       'img[data-testid="img"]',
       '.product-image img',
@@ -524,20 +660,20 @@ function extractFromDom(): Partial<ExtractedProduct> {
 
   // ---- Morrisons ----
   if (storeId === 'morrisons') {
-    priceText = getSinglePriceText(root, dealText) || getText([
+    priceText = getSinglePriceText(priceScope, dealText) || getText([
       '.product-price',
       '.price-main__integer',
-    ], root);
+    ], priceScope);
     wasPriceText = getText([
       '[data-auto="was-price"]',
       '.price--was',
       '.product-price--previous',
       '[data-testid="was-price"]',
-    ], root);
+    ], priceScope);
     loyaltyPriceText = getText([
       '[class*="more-card"]',
       '[data-testid*="more-card"]',
-    ], root) || getLoyaltyPriceByPattern(root);
+    ], priceScope) || getLoyaltyPriceByPattern(priceScope);
     imageUrl = getAttr([
       'img[data-auto="product-image"]',
       '.product-image img',
@@ -553,7 +689,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     priceText = getText([
       '[class*="priceWrapper"]',
       '.price_priceWrapper__Yp_17',
-    ], root);
+    ], priceScope);
     imageUrl = getAttr([
       '[class*="image-gallery_slides"] img',
       '.image-gallery_slides__N8x_w img',
@@ -565,14 +701,14 @@ function extractFromDom(): Partial<ExtractedProduct> {
   }
 
   // ---- Generic fallback (Aldi, Lidl, Co-op, Waitrose, Iceland, Ocado) ----
-  priceText = priceText || getSinglePriceText(root, dealText) || getAsdaPrice('was', root) || getAsdaPrice('actual price', root);
+  priceText = priceText || getSinglePriceText(priceScope, dealText) || getAsdaPrice('was', priceScope) || getAsdaPrice('actual price', priceScope);
   wasPriceText = wasPriceText || getText([
     '[data-auto="was-price"]',
     '.price--was',
     '.product-price--previous',
     '.pt__cost__retail-price--was',
     '[data-testid="was-price"]',
-  ], root);
+  ], priceScope);
   loyaltyPriceText = loyaltyPriceText || getText([
     '.ds-c-price__price[data-colour="nectar"]',
     '[data-auto="clubcard-price"]',
@@ -580,12 +716,10 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '.clubcard-price',
     '[data-testid="clubcard-price"]',
     '[data-testid="contextual-price-text"]',
-    '.pd__cost--price',
     '.ddsweb-value-bar__content-text',
     '.nectar-offer',
     '[class*="nectar-price"]',
     '[data-testid*="nectar"]',
-    '.product-pricing__nectar',
     '[class*="more-card"]',
     '[data-testid*="more-card"]',
     '[class*="member-price"]',
@@ -599,7 +733,7 @@ function extractFromDom(): Partial<ExtractedProduct> {
     '[data-testid*="asda-price"]',
     '[class*="price-lock"]',
     '[data-testid*="price-lock"]',
-  ], root) || getAsdaPrice('actual price', root) || getLoyaltyPriceByPattern(root);
+  ], priceScope) || getAsdaPrice('actual price', priceScope) || getLoyaltyPriceByPattern(priceScope);
 
   imageUrl = imageUrl || getAttr([
     'img.pd__image',
@@ -624,9 +758,15 @@ function extractFromDom(): Partial<ExtractedProduct> {
   let finalWasPrice = parsePrice(wasPriceText);
   let finalLoyaltyPrice = parsePrice(loyaltyPriceText);
 
+  // Loyalty duplicating regular price = false positive. Null it.
+  if (finalLoyaltyPrice != null && finalPrice != null && finalLoyaltyPrice === finalPrice) {
+    finalLoyaltyPrice = null;
+  }
+
   if (storeId === 'morrisons') {
-    const promoEls = document.querySelectorAll<HTMLElement>('[class*="--promotion"]');
+    const promoEls = (priceScope as ParentNode).querySelectorAll<HTMLElement>('[class*="--promotion"]');
     for (const el of promoEls) {
+      if (isExcluded(el)) continue;
       const text = el.textContent || '';
       const match = text.match(/Now\s*£([\d.]+),?\s*Was\s*£([\d.]+)/i);
       if (match) {
@@ -638,13 +778,16 @@ function extractFromDom(): Partial<ExtractedProduct> {
     }
   }
 
+  const cleanedDeal = cleanDealText(dealText);
+  const hasOfferSignal = finalWasPrice != null || finalLoyaltyPrice != null || cleanedDeal != null;
+
   return {
     name: title,
     price: finalPrice,
     was_price: finalWasPrice,
     loyalty_price: finalLoyaltyPrice,
-    offer_deal: cleanDealText(dealText),
-    offer_expires_at: extractOfferExpiry(storeId),
+    offer_deal: cleanedDeal,
+    offer_expires_at: extractOfferExpiry(storeId, priceScope, hasOfferSignal),
     image_url: imageUrl,
     product_url: window.location.href,
     category,
@@ -712,13 +855,18 @@ export function extractProduct(): ExtractedProduct | null {  const store = detec
     storage_text: extractStorageText(getProductRoot(), store.id),
   };
 
+  // JSON-LD priceValidUntil only counts when DOM shows an offer.
+  // Stops stale / template expiry leaking onto regular items.
+  const domHasOffer = dom.was_price != null || dom.loyalty_price != null || dom.offer_deal != null;
+  const offerExpiresAt = dom.offer_expires_at ?? (domHasOffer ? jsonLd?.offer_expires_at ?? null : null);
+
   return {
     name,
     price: dom.price ?? jsonLd?.price ?? null,
     loyalty_price: dom.loyalty_price ?? null,
     was_price: dom.was_price ?? null,
     offer_deal: cleanDealText(dom.offer_deal),
-    offer_expires_at: dom.offer_expires_at ?? jsonLd?.offer_expires_at ?? null,
+    offer_expires_at: offerExpiresAt,
     image_url: jsonLd?.image_url ?? dom.image_url ?? null,
     product_url: jsonLd?.product_url || dom.product_url || window.location.href,
     category,

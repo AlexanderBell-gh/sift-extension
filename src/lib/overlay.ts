@@ -345,15 +345,20 @@ async function handleAddToWatchlist(token: string, product: ExtractedProduct, co
         }, 220);
       }, 1500);
     } else if (result.blocked) {
+      const isTrialExpired = result.reason === 'trial_expired';
       container.innerHTML = `
         <div class="sift-blocked-msg">
-          <div class="sift-blocked-title">Watchlist full</div>
-          <p class="sift-blocked-text">Trial accounts are limited to 5 items.</p>
-          <p class="sift-blocked-text">Remove old items on your <a href="https://siftsearch.pages.dev/watchlist" target="_blank">Watchlist</a> to add more.</p>
+          <div class="sift-blocked-title">${isTrialExpired ? 'Trial expired' : 'Watchlist full'}</div>
+          <p class="sift-blocked-text">${escapeHtml(result.error || (isTrialExpired ? 'Trial expired. Upgrade to keep adding items.' : 'Trial accounts are limited to 5 items.'))}</p>
+          ${isTrialExpired ? '' : '<p class="sift-blocked-text">Remove old items on your <a href="https://siftsearch.pages.dev/watchlist" target="_blank">Watchlist</a> to add more.</p>'}
         </div>
       `;
     } else {
       restoreBtn();
+      const msg = document.createElement('div');
+      msg.className = 'sift-blocked-msg';
+      msg.innerHTML = `<p class="sift-blocked-text">${escapeHtml(result.error || 'Failed to add to watchlist. Try again.')}</p>`;
+      container.appendChild(msg);
     }
   } catch (e) {
     console.error('[Sift overlay] add to watchlist failed:', e);

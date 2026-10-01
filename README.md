@@ -64,4 +64,4 @@ Output: `.output/chrome-mv3/`
 
 ## Trial Users
 
-Trial accounts are limited to **5 watchlist items**. When full, the extension shows a blocked screen with a link to manage items on your Watchlist page.
+Trial accounts are limited to **5 watchlist items**. When full, the extension shows a blocked screen with a link to manage items on your Watchlist page. Expired trials get their own blocked message, and any other add failure now shows its error inline instead of silently resetting the button.
