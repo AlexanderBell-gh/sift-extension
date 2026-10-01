@@ -24,11 +24,11 @@ Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.
 
 | Store | Extraction | Notes |
 |-------|-----------|-------|
-| Tesco | Full | Clubcard price |
-| Sainsbury's | Full | Nectar price |
-| ASDA | Full | Rollback promotions (no expiry — counted as on-offer via rollback price) |
-| Morrisons | Full | More Card price; "Now £X, Was £Y" and 2-number price containers show regular + More Card; promotion cards ("£X - More Card Price") captured with expiry |
-| M&S | Partial | Price + product image (active gallery slide); deal badge color #242230 |
+| Tesco | Full | Clubcard price, multi-buys |
+| Sainsbury's | Full | Nectar price, multi-buys |
+| ASDA | Full | Rollback promotions, multi-buys (no expiry — counted as on-offer via rollback price) |
+| Morrisons | Full | More Card price, multi-buys  |
+| M&S | Full | Multi-buy offers (no expiry)  |
 | Aldi | Partial | — |
 | Lidl | Partial | — |
 | Co-op | Partial | Member price |
