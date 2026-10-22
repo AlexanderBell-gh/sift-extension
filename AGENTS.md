@@ -1,7 +1,10 @@
-# Sift Extension — Agent Guide
+# AGENTS.md
 
-## Session Start
-> **Rule**: Activate the `/caveman` Skill at `full` intensity
+## Session rules
+
+- **On startup skills**: `@caveman` and `/ponytail` both at `full` intensity, all session, until told otherwise.
+- **Prefix every shell command with:** `rtk` — e.g. `rtk git log -5`.
+- **Only use read-only git commands**: `status`, `log`, `diff`, `diff --cached`, `show`, `blame`. **Never use**: `commit`, `push`, `reset`, `rebase` or `amend`.
 
 
 ## Tech Stack
@@ -63,48 +66,9 @@ wxt.config.ts         Manifest — permissions, host_permissions, action config
 - **Morrisons "Now £X, Was £Y"** pattern is handled as More Card + regular price, not loyalty.
 - **`sharp`** is a devDependency (icon processing). If install fails on some systems, it is the likely cause.
 
-## Discovering recent changes
 
-Use git to see what changed recently rather than reading file lists:
+## Docs (user-triggered)
 
-```bash
-rtk git log -n 5 --stat           # last 5 commits with file stats
-rtk git status                    # uncommitted changes
-rtk git diff                      # unstaged changes
-rtk git diff --cached             # staged changes
-```
-
-## External Documentation
-
- - Design tokens: `/home/wsl/Repositories/markdowns/sift-markdowns/DESIGN.md`
-
-## Session Lifecycle Rules
-
-### Multi-Doc Conclusion Protocol
-Whenever the user says **"lets finish up and update the docs"**, you MUST perform the following documentation updates before stopping:
-
-1. **Update RECENT.md:**
-   * Insert a reverse-chronological entry directly under the `## Sessions` header.
-   * Keep the file at or under 70 lines — trim the oldest entries when adding a new one.
-   * Location: `/home/wsl/Repositories/markdowns/sift-markdowns/extension/RECENT.md`
-   
- ### **Format:**
-     ### 📝 [DD-MM-YYYY] @ [UK HH:MM 24-hr] | [Short Session Title]
-     * **Changes:** [One-sentence summary of what was accomplished].
-     * **Impacted Files:** `[file_1.ext]`, `[file_2.ext]`.
-
-2. **Update ARCHITECTURE.md:**
-   * Review the current architectural state, tech stack details, or data flows.
-   * Update any outdated sections to reflect the exact state of the codebase at the end of this session. Keep it under ~200 lines.
-   * Location: `home/wsl/Repositories/markdowns/sift-markdowns/extension/ARCHITECTURE.md`
-
-3. **Update README.md:**
-   * Review `README.md`. If the session introduced new features, configuration keys (`.env`), or changed installation/build commands, update those specific sections. Do not alter stable project descriptions unless explicitly relevant.
-   * Location: `/home/wsl/Repositories/sift-extension/README.md`
-
-4. **Update AGENTS.md:** 
-   * Updates to this file are strictly reserved for critical, sweeping architectural shifts, fundamental changes to the core tech stack, or major global project rules. Do not modify it for routine features, refactors, or bug fixes. Keep it under ~200 lines
-   * Location: `/home/wsl/Repositories/sift-extension/AGENTS.md`
-
-5. **Commit Message**
-   * Once docs are updated suggest a quick commit message with either `chore:`, `feat:` or `polish:` etc
+- On **"finish up and update docs"** update `RECENT.md`, `ARCHITECTURE.md` (fix anything stale, ~250 lines), `README.md` only for new features / `.env` keys / commands, and `AGENTS.md` keep lean & for sweeping changes only. 
+- Location: `RECENT.md` + `ARCHITECTURE.md` in `/home/wsl/Repositories/markdowns/sift-markdowns/extension`; `README.md` in the repo root.
+- **Stop after here.** Never commit; report the change and suggest a commit message (`feat:`, `fix:`, `chore:`, `polish:`).
