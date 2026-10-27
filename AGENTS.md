@@ -2,7 +2,7 @@
 
 ## Session rules
 
-- **On startup skills**: `@caveman` and `/ponytail` both at `full` intensity, all session, until told otherwise.
+- **On startup skills**: `@caveman` at `full` intensity, all session, until told otherwise.
 - **Prefix every shell command with:** `rtk` — e.g. `rtk git log -5`.
 - **Only use read-only git commands**: `status`, `log`, `diff`, `diff --cached`, `show`, `blame`. **Never use**: `commit`, `push`, `reset`, `rebase` or `amend`.
 
@@ -69,6 +69,6 @@ wxt.config.ts         Manifest — permissions, host_permissions, action config
 
 ## Docs (user-triggered)
 
-- On **"finish up and update docs"** update `RECENT.md`, `ARCHITECTURE.md` (fix anything stale, ~250 lines), `README.md` only for new features / `.env` keys / commands, and `AGENTS.md` keep lean & for sweeping changes only. 
+- On **"finish up and update docs"** update `RECENT.md`, `ARCHITECTURE.md` (fix anything stale, ~150 lines), `README.md` only for new features / `.env` keys / commands, and `AGENTS.md` keep lean & for sweeping changes only. 
 - Location: `RECENT.md` + `ARCHITECTURE.md` in `/home/wsl/Repositories/markdowns/sift-markdowns/extension`; `README.md` in the repo root.
 - **Stop after here.** Never commit; report the change and suggest a commit message (`feat:`, `fix:`, `chore:`, `polish:`).
