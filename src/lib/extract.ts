@@ -199,6 +199,29 @@ function toISODate(raw: string): string {
   return raw;
 }
 
+// Sainsbury's puts multibuy and expiry in one info alert: "Buy 3 get cheapest
+// 1 free with Nectar available for delivery or collection until Tue, 17 Nov 2026."
+const SAINSBURYS_ALERT_SEL = '[class*="alert__message"], [class*="alert-message"], .ds-c-alert';
+const SAINSBURYS_DEAL_RE = /\d+\s*for\s*£?\s*\d+\.?\d*|buy\s+\d+\s+get\s+.+?\bfree\b/i;
+
+function extractSainsburysAlert(scopes: ParentNode[]): { deal: string | null; expiry: string | null } | null {
+  for (const scope of scopes) {
+    const alerts = (scope as ParentNode).querySelectorAll<HTMLElement>(SAINSBURYS_ALERT_SEL);
+    for (const el of alerts) {
+      if (isExcluded(el) || !el.textContent) continue;
+      const text = el.textContent.replace(/\s+/g, ' ').trim();
+      if (text.length === 0 || text.length > 500) continue;
+      // Site-wide alerts (cookies, baskets) carry dates too. Only offer banners qualify.
+      if (!/nectar|offer|price|save/i.test(text)) continue;
+      const date = text.match(/\d{1,2}\s+\w+\s+\d{4}/);
+      const deal = text.match(SAINSBURYS_DEAL_RE);
+      if (!date && !deal) continue;
+      return { deal: deal ? deal[0].trim() : null, expiry: date ? toISODate(date[0]) : null };
+    }
+  }
+  return null;
+}
+
 function extractOfferExpiry(storeId?: string, hero?: ParentNode, hasOfferSignal?: boolean): string | null {
   // Trusted store banners are self-qualifying: Sainsbury alert, Tesco terms,
   // Morrisons promotion nodes only render with a real offer, so they return
@@ -218,20 +241,10 @@ function extractOfferExpiry(storeId?: string, hero?: ParentNode, hasOfferSignal?
         const match = sainsburysEl.textContent.trim().match(dateShort);
         if (match) return toISODate(match[0]);
       }
-
-      const sainsburysAlerts = (scope as ParentNode).querySelectorAll<HTMLElement>(
-        '[class*="alert__message"], [class*="alert-message"], .ds-c-alert'
-      );
-      for (const alertEl of sainsburysAlerts) {
-        if (isExcluded(alertEl) || !alertEl?.textContent) continue;
-        const text = alertEl.textContent;
-        if (text.length > 500) continue;
-        // Site-wide alerts (cookies, baskets) carry dates too. Only offer banners qualify.
-        if (!/nectar|offer|price|save/i.test(text)) continue;
-        const match = text.match(/(\d{1,2}\s+\w+\s+\d{4})/);
-        if (match) return toISODate(match[1]);
-      }
     }
+
+    const banner = extractSainsburysAlert(scopes);
+    if (banner?.expiry) return banner.expiry;
   }
 
   // ---- Tesco ----
@@ -412,8 +425,9 @@ function extractStorageText(root: ParentNode = document, storeId?: string): stri
 function extractDealText(root: ParentNode = document, storeId?: string): string | null {
   // Second branch requires £: bare "for 4" (freshness copy: "Typically fresh
   // for 4 days") must never qualify. Multibuy without £ stays covered by
-  // the first branch (\d+ for \d+: "3 for 2").
-  const pattern = /(\d+\s*for\s*£?\s*\d+\.?\d*|for\s*£\s*\d+\.?\d*)/i;
+  // the first branch (\d+ for \d+: "3 for 2"). Third branch: ASDA
+  // "Buy 6 Save 25%" has no "for".
+  const pattern = /(\d+\s*for\s*£?\s*\d+\.?\d*|for\s*£\s*\d+\.?\d*|save\s+\d+%)/i;
   const FRESHNESS_RE = /typically|fresh\s+for|use\s+within|eat\s+within|keep\s+(chilled|refrigerated|frozen)|best\s+before/i;
   let excludeSel = EXCLUDE_SEL;
   // ---- Morrisons ----
@@ -549,6 +563,8 @@ function getSinglePriceText(root: ParentNode, dealText: string | null): string |
 function cleanDealText(deal: string | null): string | null {
   if (!deal) return null;
   return deal
+    // ASDA "New" chip sits in the same node as the offer link.
+    .replace(/^new(?:[\s\-–—:]+)?(?=\s*(?:any|buy|only|save|£|\d))/i, '')
     .replace(/\s*-\s*Selected\s+[^-]+$/i, '')
     .replace(/\s*-\s*Cheapest\s+Product\s+Free/i, '')
     .trim() || null;
@@ -561,7 +577,9 @@ function extractFromDom(): Partial<ExtractedProduct> {
   // Price signals come from hero only. Title / image may live outside buy-box.
   const priceScope = hero;
 
-  const dealText = extractDealText(priceScope, storeId) || extractDealText(root, storeId);
+  const banner = storeId === 'sainsburys' ? extractSainsburysAlert(priceScope === root ? [root] : [priceScope, root]) : null;
+
+  const dealText = banner?.deal || extractDealText(priceScope, storeId) || extractDealText(root, storeId);
 
   let priceText: string | null = null;
   let wasPriceText: string | null = null;

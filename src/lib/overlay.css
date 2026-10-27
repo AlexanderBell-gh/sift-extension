@@ -139,8 +139,8 @@
 /* Deal badge */
 .sift-deal-badge {
   display: inline-block;
-  margin-top: 8px;
-  padding: 2px 8px;
+  margin-top: 4px;
+  padding: 4px 6px;
   background: #FF5701;
   color: #FFFFFF;
   font-size: 11px;
@@ -148,7 +148,7 @@
   border-radius: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: wrap;
   max-width: 100%;
 }
 
