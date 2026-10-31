@@ -1,4 +1,5 @@
 import { defineConfig } from 'wxt';
+import { getStoreMatches, SITE_HOST_PERMISSIONS } from './src/lib/store-config';
 
 export default defineConfig({
   manifest: {
@@ -6,20 +7,8 @@ export default defineConfig({
     description: 'Extract product data from UK supermarkets and add to your Sift watchlist.',
     permissions: ['activeTab', 'storage', 'tabs', 'scripting'],
     host_permissions: [
-      'https://www.tesco.com/*',
-      'https://www.sainsburys.co.uk/*',
-      'https://www.asda.com/groceries/*',
-      'https://groceries.morrisons.com/*',
-      'https://www.marksandspencer.com/*',
-      'https://www.aldi.co.uk/*',
-      'https://www.lidl.co.uk/*',
-      'https://www.coop.co.uk/*',
-      'https://www.waitrose.com/*',
-      'https://www.iceland.co.uk/*',
-      'https://www.ocado.com/*',
-      'https://siftapi.blackmesa.workers.dev/*',
-      'https://siftsearch.pages.dev/*',
-      'http://localhost:5173/*',
+      ...getStoreMatches(),
+      ...SITE_HOST_PERMISSIONS,
     ],
     action: {
       default_popup: 'popup.html',

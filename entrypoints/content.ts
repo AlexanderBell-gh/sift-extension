@@ -1,24 +1,14 @@
 import type { ExtractedProduct } from '../src/types';
-import { extractProduct } from '../src/lib/extract';
+import { dumpProduct, extractProduct } from '../src/lib/extract';
 import { initOverlay } from '../src/lib/overlay';
+import { getStoreMatches, SITE_MATCHES } from '../src/lib/store-config';
 
 export default defineContentScript({
-  matches: [
-    'https://www.tesco.com/*',
-    'https://www.sainsburys.co.uk/*',
-    'https://www.asda.com/groceries/*',
-    'https://groceries.morrisons.com/*',
-    'https://www.marksandspencer.com/*',
-    'https://www.aldi.co.uk/*',
-    'https://www.lidl.co.uk/*',
-    'https://www.coop.co.uk/*',
-    'https://www.waitrose.com/*',
-    'https://www.iceland.co.uk/*',
-    'https://www.ocado.com/*',
-    'https://siftsearch.pages.dev/*',
-    'http://localhost:5173/*'
-  ],
+  matches: [...getStoreMatches(), ...SITE_MATCHES],
   main() {
+    // DevTools console -> context dropdown -> Sift -> __siftDump()
+    (window as unknown as { __siftDump?: () => void }).__siftDump = () => console.log(dumpProduct());
+
     if (window.location.hostname === 'siftsearch.pages.dev' || window.location.hostname === 'localhost') {
       const meta = document.createElement('meta');
       meta.name = 'sift-extension';
@@ -40,7 +30,7 @@ export default defineContentScript({
 
     chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       if (request.action === 'extract') {
-        const product = extractProduct();
+        const product: ExtractedProduct | null = extractProduct();
         sendResponse({ product });
       }
       if (request.action === 'getToken') {

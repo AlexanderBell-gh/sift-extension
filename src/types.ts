@@ -10,7 +10,7 @@ export interface CategorySignals {
 }
 
 export interface ExtractedProduct {
-  name: string;
+  name: string | null;
   price: number | null;
   loyalty_price: number | null;
   was_price: number | null;

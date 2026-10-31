@@ -1,7 +1,7 @@
 import type { ExtractedProduct } from '../types';
 import { extractProduct, hasProductPageSignal } from './extract';
 import { addToWatchlist } from './sift-api';
-import { LOYALTY_LABELS } from './loyalty';
+import { detectStoreByHost, LOYALTY_LABELS } from './store-config';
 import overlayCss from './overlay.css?inline';
 
 const SIFT_LOGO = `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -441,20 +441,7 @@ function scheduleProductRetry() {
 }
 
 function checkStore() {
-  const hostname = window.location.hostname;
-  const isStore = hostname.includes('tesco.com')
-    || hostname.includes('sainsburys.co.uk')
-    || hostname.includes('asda.com')
-    || hostname.includes('morrisons.com')
-    || hostname.includes('marksandspencer.com')
-    || hostname.includes('aldi.co.uk')
-    || hostname.includes('lidl.co.uk')
-    || hostname.includes('coop.co.uk')
-    || hostname.includes('waitrose.com')
-    || hostname.includes('iceland.co.uk')
-    || hostname.includes('ocado.com');
-
-  if (isStore) {
+  if (detectStoreByHost(window.location.hostname)) {
     createFloatBtn();
     if (hasProductPageSignal()) {
       cancelProductRetry();

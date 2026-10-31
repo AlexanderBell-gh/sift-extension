@@ -1,5 +1,5 @@
 import type { ExtractedProduct } from '../types';
-import { LOYALTY_LABELS } from './loyalty';
+import { LOYALTY_LABELS } from './store-config';
 
 const API_BASE_URL = 'https://siftapi.blackmesa.workers.dev';
 

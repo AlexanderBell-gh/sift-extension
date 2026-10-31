@@ -34,7 +34,6 @@ Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.
 | Co-op | Partial | Member price |
 | Waitrose | Partial | My Waitrose price |
 | Iceland | Partial | — |
-| Ocado | Partial | — |
 
 ## Category Mapping
 
@@ -47,6 +46,7 @@ pnpm install
 pnpm run dev    # watch mode
 pnpm run build  # production build
 pnpm run zip    # package for distribution
+pnpm run check  # store registry asserts (node scripts/check-config.ts)
 ```
 
 Output: `.output/chrome-mv3/`
@@ -57,7 +57,7 @@ Output: `.output/chrome-mv3/`
 - `storage` — persist login token
 - `tabs` — query for siftsearch.pages.dev tabs to link website session
 - `scripting` — force-inject presence signal into existing tabs on install
-- Host permissions for 11 store domains + Sift API + siftsearch.pages.dev + localhost:5173
+- Host permissions for 10 store domains + Sift API + siftsearch.pages.dev + localhost:5173
 
 ## Auth
 
