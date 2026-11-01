@@ -21,6 +21,11 @@ export function markTrace(field: string, selector: string): void {
   if (trace) trace[field] = selector;
 }
 
+// Field nulled after tracing (e.g. was == loyalty); keeps the dump clean.
+export function clearTrace(field: string): void {
+  if (trace) delete trace[field];
+}
+
 export function isDebugEnabled(): boolean {
   try {
     return (

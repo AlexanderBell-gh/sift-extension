@@ -1,5 +1,6 @@
 import type { ExtractedProduct } from '../types';
 import {
+  DEFAULT_DEAL_ANCHOR,
   DEFAULT_EXPIRY,
   DEFAULT_FIELDS,
   detectStoreByHost,
@@ -11,10 +12,13 @@ import {
   formatProductDump,
   isDebugEnabled,
   markTrace,
+  clearTrace,
   startTrace,
   stopTrace,
   type Trace,
 } from './debug';
+
+// ── Global: types + shared helpers ────────────────────────────────────────────
 
 interface JsonLdOffer {
   '@type'?: string | string[];
@@ -52,17 +56,27 @@ interface DomResult {
   price: number | null;
   was_price: number | null;
   loyalty_price: number | null;
+  /** "Offer" when loyalty_price is a plain offer, not the store's scheme. */
+  loyalty_label: string | null;
   offer_deal: string | null;
   offer_expires_at: string | null;
   image_url: string | null;
   product_url: string;
-  category: null;
 }
 
 interface PriceValues {
   price: number | null;
   was: number | null;
   loyalty: number | null;
+}
+
+interface MergedFields {
+  title: string[];
+  image: string[];
+  price: string[];
+  was: string[];
+  loyaltyPrice: string[];
+  storage: string[];
 }
 
 function parsePrice(text: string | undefined | null): number | null {
@@ -93,9 +107,11 @@ function getProductRoot(): ParentNode {
 }
 
 // Carousel / cross-sell nodes live inside <main> and contaminate broad scans.
-// Hero containers below hold only the main PDP price block.
+// Hero containers below hold only the main PDP price block. Neighbour carousels
+// (Sainsbury's frequently-bought-together) carry other products' pricing, so
+// any spelling of that section is excluded from every scoped scan.
 const EXCLUDE_SEL =
-  '[class*="carousel"], [class*="Carousel"], [class*="ddsweb-carousel"], [class*="ds-c-carousel"], [class*="carousel__"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"], [data-test*="carousel"], [data-test*="recommend"], [data-testid="product-information-roundel"], [data-testid*="roundel"]';
+  '[class*="carousel"], [class*="Carousel"], [class*="ddsweb-carousel"], [class*="ds-c-carousel"], [class*="carousel__"], [class*="cross-sell"], [class*="crosssell"], [class*="related"], [class*="recommend"], [class*="recently"], [data-testid*="carousel"], [data-testid*="recommend"], [data-test*="carousel"], [data-test*="recommend"], [data-testid="product-information-roundel"], [data-testid*="roundel"], [class*="frequently-bought"], [class*="frequentlybought" i], [data-testid*="frequently"]';
 
 function isExcluded(el: Element | null | undefined): boolean {
   try {
@@ -273,34 +289,6 @@ function toISODate(raw: string): string {
   return raw;
 }
 
-// Sainsbury's puts multibuy and expiry in one info alert: "Buy 3 get cheapest
-// 1 free with Nectar available for delivery or collection until Tue, 17 Nov 2026."
-const ALERT_DEAL_RE = /\d+\s*for\s*£?\s*\d+\.?\d*|buy\s+\d+\s+get\s+.+?\bfree\b/i;
-const ALERT_REQUIRE_RE = /nectar|offer|price|save/i;
-
-function extractAlert(
-  selectors: string[],
-  scopes: ParentNode[]
-): { deal: string | null; expiry: string | null } | null {
-  for (const scope of scopes) {
-    for (const el of scope.querySelectorAll<HTMLElement>(selectors.join(','))) {
-      if (isExcluded(el) || !el.textContent) continue;
-      const text = el.textContent.replace(/\s+/g, ' ').trim();
-      if (text.length === 0 || text.length > 500) continue;
-      // Site-wide alerts (cookies, baskets) carry dates too. Only offer banners qualify.
-      if (!ALERT_REQUIRE_RE.test(text)) continue;
-      const date = text.match(/\d{1,2}\s+\w+\s+\d{4}/);
-      const deal = text.match(ALERT_DEAL_RE);
-      if (!date && !deal) continue;
-      const selector = matchedSelector(el, selectors);
-      if (deal) markTrace('deal', selector);
-      if (date) markTrace('expiry', selector);
-      return { deal: deal ? deal[0].trim() : null, expiry: date ? toISODate(date[0]) : null };
-    }
-  }
-  return null;
-}
-
 // Trusted store banners are self-qualifying: they only render with a real
 // offer, so their rules run ungated. The generic rule stays gated.
 function resolveExpiry(
@@ -330,23 +318,6 @@ function resolveExpiry(
   return null;
 }
 
-function getAsdaPrice(field: string, label: string, root: ParentNode): string | null {
-  const containers = root.querySelectorAll<HTMLElement>('[data-testid="txt-pdp-product-price"]');
-  for (const container of containers) {
-    if (isExcluded(container)) continue;
-    for (const p of container.querySelectorAll<HTMLElement>('p')) {
-      const span = p.querySelector<HTMLElement>('span');
-      if (span?.textContent?.trim().toLowerCase() !== label) continue;
-      const text = p.textContent?.trim();
-      if (text) {
-        markTrace(field, `[data-testid="txt-pdp-product-price"] (${label})`);
-        return text;
-      }
-    }
-  }
-  return null;
-}
-
 function getBreadcrumbCrumbs(root: ParentNode): string[] {
   const selectors = [
     '[data-auto="breadcrumb"] a',
@@ -359,7 +330,16 @@ function getBreadcrumbCrumbs(root: ParentNode): string[] {
   ];
   const crumbs: string[] = [];
   for (const link of root.querySelectorAll<HTMLElement>(selectors.join(','))) {
-    const text = link.textContent?.trim();
+    // Tesco "Back to <category>" links are navigation, not a crumb.
+    let text = link.textContent?.trim().replace(/^back\s+to\s+/i, '');
+    // Sainsbury's breadcrumb links duplicate their own label (visible + a11y copy).
+    if (
+      text &&
+      text.length % 2 === 0 &&
+      text.slice(0, text.length / 2) === text.slice(text.length / 2)
+    ) {
+      text = text.slice(0, text.length / 2);
+    }
     if (text) crumbs.push(text);
   }
   return crumbs;
@@ -377,7 +357,11 @@ const STORAGE_PATTERN =
   /refrigerat|keep chilled|microwave from chilled|keep cool|serve chilled|store in a cool dry|cool dry|do not freeze|do not refreeze|suitable for (home )?freez|keep frozen|store frozen|ambient|store cupboard|no refrigeration|use by|eat within|-18/i;
 
 function extractStorageSentence(text: string): string | null {
-  const cleaned = text.replace(/\s+/g, ' ').trim();
+  // Sainsbury's glues the section label onto the sentence ("StorageTo Keep…").
+  const cleaned = text
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^(storage|preparation)(?=[A-Z]|:|\s)/i, '');
   if (!STORAGE_PATTERN.test(cleaned)) return null;
   const sentences = cleaned.split(/(?<=[.!?;])\s+|\n+/);
   for (const sentence of sentences) {
@@ -436,17 +420,17 @@ const DEAL_SELECTORS = [
 
 // Second branch requires £: bare "for 4" (freshness copy: "Typically fresh
 // for 4 days") must never qualify. Multibuy without £ stays covered by
-// the first branch (\d+ for \d+: "3 for 2"). Third branch: ASDA
-// "Buy 6 Save 25%" has no "for".
-const DEAL_PATTERN = /(\d+\s*for\s*£?\s*\d+\.?\d*|for\s+£\s*\d+\.?\d*|save\s+\d+%)/i;
+// the first branch (\d+ for \d+: "3 for 2", "3 for the price of 2"). Third
+// branch: ASDA "Buy 6 Save 25%" has no "for". Bare "Save 25%" is a loyalty
+// discount (Clubcard / Nectar / More Card), never a multibuy.
+const DEAL_PATTERN =
+  /(\d+\s*for\s*(?:the\s+price\s+of\s*)?£?\s*\d+\.?\d*|for\s+£\s*\d+\.?\d*|buy\s+\d+\b[^.]{0,20}?save\s+\d+%)/i;
 const FRESHNESS_RE =
   /typically|fresh\s+for|use\s+within|eat\s+within|keep\s+(chilled|refrigerated|frozen)|best\s+before/i;
 
 function extractDealText(root: ParentNode, extraExclude: string[]): string | null {
   const excludeSel = [EXCLUDE_SEL, ...extraExclude].join(', ');
-  const priceEl = root.querySelector<HTMLElement>(
-    '[data-testid="txt-pdp-product-price"], [class*="product-pricing"], [data-testid*="contextual-price"], [class*="value-bar"], .ds-c-price'
-  );
+  const priceEl = root.querySelector<HTMLElement>(DEFAULT_DEAL_ANCHOR.join(', '));
   const priceRect = priceEl?.getBoundingClientRect();
 
   let best: { text: string; el: HTMLElement } | null = null;
@@ -471,6 +455,23 @@ function extractDealText(root: ParentNode, extraExclude: string[]): string | nul
   if (!best) return null;
   markTrace('deal', matchedSelector(best.el, DEAL_SELECTORS));
   return best.text;
+}
+
+// Trusted store deal cards are self-qualifying like alert banners: matched only
+// on the store's own selector, without the price-band proximity check, and long
+// card text collapses to the matched deal phrase.
+function extractStoreDeal(selectors: string[], root: ParentNode): string | null {
+  for (const el of root.querySelectorAll<HTMLElement>(selectors.join(','))) {
+    if (isExcluded(el)) continue;
+    const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text.length === 0 || text.length > 300) continue;
+    if (FRESHNESS_RE.test(text)) continue;
+    const match = text.match(DEAL_PATTERN);
+    if (!match) continue;
+    markTrace('deal', matchedSelector(el, selectors));
+    return match[0].trim();
+  }
+  return null;
 }
 
 function cleanDealText(deal: string | null): string | null {
@@ -553,14 +554,7 @@ function extractFromJsonLd(): JsonLdResult | null {
   return null;
 }
 
-function mergeFields(cfg: StoreConfig): {
-  title: string[];
-  image: string[];
-  price: string[];
-  was: string[];
-  loyaltyPrice: string[];
-  storage: string[];
-} {
+function mergeFields(cfg: StoreConfig): MergedFields {
   const join = (store: string[] | undefined, defaults: readonly string[]): string[] => [
     ...new Set([...(store ?? []), ...defaults]),
   ];
@@ -574,6 +568,32 @@ function mergeFields(cfg: StoreConfig): {
   };
 }
 
+// ── ASDA: rollback pricing ────────────────────────────────────────────────────
+
+// Labelled price paragraphs inside [data-testid="txt-pdp-product-price"].
+function getLabeledPrice(
+  field: string,
+  label: string,
+  container: string | undefined,
+  root: ParentNode
+): string | null {
+  if (!container) return null;
+  const containers = root.querySelectorAll<HTMLElement>(container);
+  for (const el of containers) {
+    if (isExcluded(el)) continue;
+    for (const p of el.querySelectorAll<HTMLElement>('p')) {
+      const span = p.querySelector<HTMLElement>('span');
+      if (span?.textContent?.trim().toLowerCase() !== label) continue;
+      const text = p.textContent?.trim();
+      if (text) {
+        markTrace(field, `${container} (${label})`);
+        return text;
+      }
+    }
+  }
+  return null;
+}
+
 // ASDA labels "was £4.20 / actual price £4.00". Rollback is loyalty pricing,
 // not a was-strikethrough: regular price is the "was" figure, Rollback price
 // is the loyalty figure, no was_price. Regular items (actual only) fall
@@ -585,14 +605,17 @@ function applyAsdaRollback(values: PriceValues): void {
   values.was = null;
 }
 
-function applyMorrisonsPromo(scope: ParentNode, values: PriceValues): void {
-  // Promo price-container: promoted span + strikethrough original
-  // (data-test="bop-price-original"). Two numbers = More Card offer:
-  // original as regular price, promoted as More Card loyalty price.
-  // Single number = regular price capture (this markup misses all
-  // class-based price selectors).
+// ── Morrisons: More Card promo ───────────────────────────────────────────────
+
+// Promo price-container: promoted span + strikethrough original
+// (data-test="bop-price-original"). Two numbers = More Card offer:
+// original as regular price, promoted as More Card loyalty price.
+// Single number = regular price capture (this markup misses all
+// class-based price selectors).
+function applyMorrisonsPromo(cfg: StoreConfig, scope: ParentNode, values: PriceValues): void {
+  if (!cfg.priceContainer || !cfg.promoSelector) return;
   let handled = false;
-  for (const container of scope.querySelectorAll<HTMLElement>('[data-test="price-container"]')) {
+  for (const container of scope.querySelectorAll<HTMLElement>(cfg.priceContainer)) {
     if (isExcluded(container)) continue;
     const numbers: { el: HTMLElement; value: number }[] = [];
     for (const span of container.querySelectorAll<HTMLElement>('span')) {
@@ -602,6 +625,7 @@ function applyMorrisonsPromo(scope: ParentNode, values: PriceValues): void {
     }
     if (numbers.length === 1) {
       values.price = numbers[0].value;
+      markTrace('price', `${cfg.priceContainer} (single)`);
       continue;
     }
     if (numbers.length !== 2) continue;
@@ -617,17 +641,21 @@ function applyMorrisonsPromo(scope: ParentNode, values: PriceValues): void {
     values.loyalty = promoted.value;
     values.was = null;
     handled = true;
+    markTrace('price', `${cfg.priceContainer} (original)`);
+    markTrace('loyalty', `${cfg.priceContainer} (promoted)`);
     break;
   }
 
   if (!handled) {
-    for (const el of scope.querySelectorAll<HTMLElement>('[class*="--promotion"]')) {
+    for (const el of scope.querySelectorAll<HTMLElement>(cfg.promoSelector)) {
       if (isExcluded(el)) continue;
       const match = (el.textContent || '').match(/Now\s*£([\d.]+),?\s*Was\s*£([\d.]+)/i);
       if (!match) continue;
       values.price = parseFloat(match[2]);
       values.loyalty = parseFloat(match[1]);
       values.was = null;
+      markTrace('price', `${cfg.promoSelector} (Now/Was)`);
+      markTrace('loyalty', `${cfg.promoSelector} (Now/Was)`);
       break;
     }
   }
@@ -638,7 +666,7 @@ function applyMorrisonsPromo(scope: ParentNode, values: PriceValues): void {
   if (values.loyalty == null) {
     const cardPattern = /£\s*(\d+\.?\d*)\s*[-–—]?\s*More\s*Card\s*Price/i;
     for (const el of scope.querySelectorAll<HTMLElement>(
-      'h3[class*="--promotion"], [class*="--promotion"]'
+      `h3${cfg.promoSelector}, ${cfg.promoSelector}`
     )) {
       if (isExcluded(el)) continue;
       const text = el.textContent?.trim() || '';
@@ -646,34 +674,81 @@ function applyMorrisonsPromo(scope: ParentNode, values: PriceValues): void {
       const match = text.match(cardPattern);
       if (match) {
         values.loyalty = parseFloat(match[1]);
+        markTrace('loyalty', `${cfg.promoSelector} (card)`);
         break;
       }
     }
   }
 }
 
-function extractFromDom(cfg: StoreConfig): DomResult {
-  const root = getProductRoot();
+// ── Sainsbury's: offer alert ─────────────────────────────────────────────────
+
+// Sainsbury's puts multibuy and expiry in one info alert: "Buy 3 get cheapest
+// 1 free with Nectar available for delivery or collection until Tue, 17 Nov 2026."
+const ALERT_DEAL_RE = /\d+\s*for\s*£?\s*\d+\.?\d*|buy\s+\d+\s+get\s+.+?\bfree\b/i;
+const ALERT_REQUIRE_RE = /nectar|offer|price|save/i;
+
+function extractAlert(
+  selectors: string[],
+  scopes: ParentNode[]
+): { deal: string | null; expiry: string | null } | null {
+  for (const scope of scopes) {
+    for (const el of scope.querySelectorAll<HTMLElement>(selectors.join(','))) {
+      if (isExcluded(el) || !el.textContent) continue;
+      const text = el.textContent.replace(/\s+/g, ' ').trim();
+      if (text.length === 0 || text.length > 500) continue;
+      // Site-wide alerts (cookies, baskets) carry dates too. Only offer banners qualify.
+      if (!ALERT_REQUIRE_RE.test(text)) continue;
+      const date = text.match(/\d{1,2}\s+\w+\s+\d{4}/);
+      const deal = text.match(ALERT_DEAL_RE);
+      if (!date && !deal) continue;
+      const selector = matchedSelector(el, selectors);
+      if (deal) markTrace('deal', selector);
+      if (date) markTrace('expiry', selector);
+      return { deal: deal ? deal[0].trim() : null, expiry: date ? toISODate(date[0]) : null };
+    }
+  }
+  return null;
+}
+
+// ── Global: extraction pipeline + public API ────────────────────────────────
+
+// Mode blocks are store-scoped post-processing; everything else in the
+// pipeline is store-agnostic.
+function applyMode(cfg: StoreConfig, scope: ParentNode, values: PriceValues): void {
+  if (cfg.mode === 'asda-rollback') applyAsdaRollback(values);
+  if (cfg.mode === 'morrisons-promo') applyMorrisonsPromo(cfg, scope, values);
+}
+
+function extractFromDom(cfg: StoreConfig, root: ParentNode, fields: MergedFields): DomResult {
   // Price signals come from hero only. Title / image may live outside buy-box.
   const priceScope = getHeroRoot(cfg);
   const scopes = priceScope === root ? [root] : [priceScope, root];
-  const fields = mergeFields(cfg);
+  const extraExclude = cfg.exclude ?? [];
 
   const alert = cfg.alert ? extractAlert(cfg.alert, scopes) : null;
   const dealText =
     alert?.deal ||
-    extractDealText(priceScope, cfg.exclude ?? []) ||
-    extractDealText(root, cfg.exclude ?? []);
+    (cfg.deal ? extractStoreDeal(cfg.deal, root) : null) ||
+    extractDealText(priceScope, extraExclude) ||
+    extractDealText(root, extraExclude);
   const deal = cleanDealText(dealText);
 
   const priceText =
     getPriceText(fields.price, priceScope, dealText) ||
-    getAsdaPrice('price', 'actual price', priceScope) ||
-    getAsdaPrice('price', 'was', priceScope);
+    getLabeledPrice('price', 'actual price', cfg.priceContainer, priceScope) ||
+    getLabeledPrice('price', 'was', cfg.priceContainer, priceScope);
   const wasPriceText =
-    getAsdaPrice('was', 'was', priceScope) || getText('was', fields.was, priceScope);
+    getLabeledPrice('was', 'was', cfg.priceContainer, priceScope) ||
+    getText('was', fields.was, priceScope);
   const loyaltyPriceText =
     getText('loyalty', fields.loyaltyPrice, priceScope) || getLoyaltyPriceByPattern(priceScope);
+  // Plain "Offer" price fills the loyalty slot only when no loyalty scheme matched.
+  let loyaltyLabel: string | null = null;
+  if (!loyaltyPriceText && cfg.offerPrice) {
+    const offerPriceText = getText('loyalty', cfg.offerPrice, priceScope);
+    if (offerPriceText) loyaltyLabel = cfg.offerPriceLabel ?? null;
+  }
 
   const imageUrl =
     getAttr('image', cfg.imageNoExclude ?? [], 'src', root, true) ||
@@ -686,11 +761,23 @@ function extractFromDom(cfg: StoreConfig): DomResult {
     loyalty: parsePrice(loyaltyPriceText),
   };
 
-  if (cfg.mode === 'asda-rollback') applyAsdaRollback(values);
-  if (cfg.mode === 'morrisons-promo') applyMorrisonsPromo(priceScope, values);
+  applyMode(cfg, priceScope, values);
 
   // Loyalty duplicating the regular price is a false positive. Null it.
-  if (values.loyalty != null && values.loyalty === values.price) values.loyalty = null;
+  if (values.loyalty != null && values.loyalty === values.price) {
+    values.loyalty = null;
+    loyaltyLabel = null;
+    clearTrace('loyalty');
+  }
+  // Same for a was price equal to the current price: plain-offer containers
+  // (Sainsbury's contextual price) echo the current price when not on offer.
+  if (values.was != null && values.was === values.price) values.was = null;
+  // Loyalty offers echo the loyalty figure in the was container
+  // (Sainsbury's contextual price); a strikethrough never equals loyalty.
+  if (values.was != null && values.was === values.loyalty) {
+    values.was = null;
+    clearTrace('was');
+  }
 
   const hasOfferSignal = values.was != null || values.loyalty != null || deal != null;
   const offerExpiresAt =
@@ -703,11 +790,11 @@ function extractFromDom(cfg: StoreConfig): DomResult {
     price: values.price,
     was_price: values.was,
     loyalty_price: values.loyalty,
+    loyalty_label: loyaltyLabel,
     offer_deal: deal,
     offer_expires_at: offerExpiresAt,
     image_url: imageUrl,
     product_url: window.location.href,
-    category: null,
   };
 }
 
@@ -723,8 +810,9 @@ function runExtraction(traceEnabled: boolean): RunResult | null {
   if (traceEnabled) startTrace();
 
   const jsonLd = extractFromJsonLd();
-  const dom = extractFromDom(store);
   const root = getProductRoot();
+  const fields = mergeFields(store);
+  const dom = extractFromDom(store, root, fields);
 
   // Worker owns taxonomy. Client sends null guess plus signals.
   const category: string | null = null;
@@ -739,7 +827,7 @@ function runExtraction(traceEnabled: boolean): RunResult | null {
     store_id: store.id,
     url_path: window.location.pathname,
     jsonld_category: jsonLd?.category || null,
-    storage_text: extractStorageText(mergeFields(store).storage, root),
+    storage_text: extractStorageText(fields.storage, root),
   };
 
   // JSON-LD priceValidUntil only counts when DOM shows an offer.
@@ -751,11 +839,12 @@ function runExtraction(traceEnabled: boolean): RunResult | null {
     name,
     price: dom.price ?? jsonLd?.price ?? null,
     loyalty_price: dom.loyalty_price ?? null,
+    loyalty_label: dom.loyalty_label ?? null,
     was_price: dom.was_price ?? null,
     offer_deal: dom.offer_deal ?? null,
     offer_expires_at: offerExpiresAt,
     image_url: jsonLd?.image_url ?? dom.image_url ?? null,
-    product_url: jsonLd?.product_url || dom.product_url || window.location.href,
+    product_url: jsonLd?.product_url || dom.product_url,
     category,
     store: store.name,
     store_logo: store.logo,
@@ -773,7 +862,7 @@ export function hasProductPageSignal(): boolean {
   const store = detectStoreByHost(window.location.hostname);
   if (!store) return false;
   if (extractFromJsonLd() != null) return true;
-  const dom = extractFromDom(store);
+  const dom = extractFromDom(store, getProductRoot(), mergeFields(store));
   return dom.name != null && dom.price != null;
 }
 

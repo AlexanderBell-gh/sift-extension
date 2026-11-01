@@ -217,7 +217,9 @@ async function renderOverlay(product: ExtractedProduct) {
   shadowRoot.appendChild(style);
 
   const storeColor = STORE_COLORS[product.store];
-  const loyaltyLabel = LOYALTY_LABELS[product.store] || 'Loyalty';
+  const loyaltyLabel = product.loyalty_label || LOYALTY_LABELS[product.store] || 'Loyalty';
+  // "Offer" is a plain store offer, not the loyalty scheme.
+  const loyaltyColor = loyaltyLabel === 'Offer' ? '#d50000' : storeColor;
   const hasMultiBuy = !!product.offer_deal;
 
   const priceHtml = product.price != null
@@ -229,7 +231,7 @@ async function renderOverlay(product: ExtractedProduct) {
     : '';
 
   const loyaltyHtml = !hasMultiBuy && product.loyalty_price != null
-    ? `<span class="sift-price-loyalty"${storeColor ? ` style="color:${storeColor}"` : ''}>${loyaltyLabel} £${product.loyalty_price.toFixed(2)}</span>`
+    ? `<span class="sift-price-loyalty"${loyaltyColor ? ` style="color:${loyaltyColor}"` : ''}>${loyaltyLabel} £${product.loyalty_price.toFixed(2)}</span>`
     : '';
 
   const dealHtml = product.offer_deal

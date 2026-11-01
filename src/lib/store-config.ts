@@ -33,6 +33,9 @@ export interface StoreConfig {
   matches: string[];
   loyalty?: string;
   mode?: StoreMode;
+  /** Plain "Offer" price (no loyalty scheme): same loyalty slot, own label. */
+  offerPrice?: string[];
+  offerPriceLabel?: string;
   /** Hero price container candidates, scored so the offer block wins over price-only copies. */
   hero?: { selectors: string[]; score: HeroScore };
   title?: string[];
@@ -46,8 +49,15 @@ export interface StoreConfig {
   expiry?: ExpiryRule;
   /** Offer banner carrying multibuy + expiry in one node (Sainsbury's). */
   alert?: string[];
+  /** Trusted deal card selectors (Morrisons offer-card-promotion): scanned before the
+   * generic price-band pass, and long card text collapses to the matched deal phrase. */
+  deal?: string[];
   /** Extra exclusion selectors on top of the shared carousel/cross-sell list. */
   exclude?: string[];
+  /** Mode plumbing: ASDA labelled price paragraphs; Morrisons promo container spans. */
+  priceContainer?: string;
+  /** Morrisons promo nodes: Now/Was text plus More Card card heads. */
+  promoSelector?: string;
 }
 
 export const DEFAULT_FIELDS = {
@@ -118,6 +128,15 @@ export const DEFAULT_FIELDS = {
   ],
 } as const;
 
+/** Price-block anchors that band deal candidates next to the price. */
+export const DEFAULT_DEAL_ANCHOR = [
+  '[data-testid="txt-pdp-product-price"]',
+  '[class*="product-pricing"]',
+  '[data-testid*="contextual-price"]',
+  '[class*="value-bar"]',
+  '.ds-c-price',
+];
+
 const DATE_SHORT = /\d{1,2}\s+\w+\s+\d{4}/;
 
 export const DEFAULT_EXPIRY: ExpiryRule = {
@@ -139,6 +158,9 @@ export const DEFAULT_EXPIRY: ExpiryRule = {
   ],
   gate: true,
 };
+
+// Morrisons promo nodes: Now/Was text, More Card card heads, expiry home.
+const MORRISONS_PROMO = '[class*="--promotion"]';
 
 const HERO_SCORE: HeroScore = {
   loyalty:
@@ -227,7 +249,12 @@ export const STORE_CONFIG: Record<string, StoreConfig> = {
       '[class*="nectar-price"]',
       '[data-testid*="nectar"]',
     ],
+    // Plain Sainsbury's "Offer" price (red, no Nectar scheme) — second price slot.
+    offerPrice: ['[class*="ds-c-display-2"]'],
+    offerPriceLabel: 'Offer',
+    // Plain-offer items: the regular price sits in the contextual container.
     was: [
+      '[data-testid="gw-product-contextual-price"]',
       '[data-auto="was-price"]',
       '.price--was',
       '.product-price--previous',
@@ -259,6 +286,7 @@ export const STORE_CONFIG: Record<string, StoreConfig> = {
     matches: ['https://www.asda.com/groceries/*'],
     loyalty: 'Rollback',
     mode: 'asda-rollback',
+    priceContainer: '[data-testid="txt-pdp-product-price"]',
     title: ['h1', '[data-testid="txt-pdp-product-name"]'],
     image: ['img[data-testid="img"]', '.product-image img', 'img[data-auto="product-image"]'],
     loyaltyPrice: [
@@ -280,13 +308,19 @@ export const STORE_CONFIG: Record<string, StoreConfig> = {
     matches: ['https://groceries.morrisons.com/*'],
     loyalty: 'More Card',
     mode: 'morrisons-promo',
+    // Promo price container spans + "--promotion" nodes for Now/Was and card heads.
+    priceContainer: '[data-test="price-container"]',
+    promoSelector: MORRISONS_PROMO,
     title: ['h1', '[data-auto="product-title"]'],
     image: ['img[data-auto="product-image"]', '.product-image img'],
     loyaltyPrice: ['[class*="more-card"]', '[data-testid*="more-card"]'],
+    // Multi-buy text is a hashed bold span (_text--promotion_cn5lb_31); the
+    // offer card only as fallback. Expiry nodes here carry no deal phrase.
+    deal: ['[class*="_text--promotion"]', '[class*="--promotion"]'],
     // "You might also like" tiles repeat deal text next to the PDP price.
     exclude: ['[data-test*="you-might"]'],
     expiry: {
-      selectors: ['[class*="--promotion"]'],
+      selectors: [MORRISONS_PROMO],
       patterns: [
         /(?:order\s*by|until|before|valid until)\s+(\d{2}\/\d{2}\/\d{4})/i,
         /(\d{2}\/\d{2}\/\d{4})/,

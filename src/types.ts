@@ -12,7 +12,10 @@ export interface CategorySignals {
 export interface ExtractedProduct {
   name: string | null;
   price: number | null;
+  /** Loyalty price, or a plain store "Offer" price (loyalty_label names which). */
   loyalty_price: number | null;
+  /** Set when loyalty_price is a plain offer rather than the store's loyalty scheme. */
+  loyalty_label?: string | null;
   was_price: number | null;
   offer_deal: string | null;
   category: string | null;

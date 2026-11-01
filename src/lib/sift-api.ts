@@ -50,7 +50,7 @@ export async function addToWatchlist(
         unit_price: null,
         currency: product.currency,
       },
-      loyalty_type: LOYALTY_LABELS[product.store] || null,
+      loyalty_type: product.loyalty_label || LOYALTY_LABELS[product.store] || null,
       offer_deal: product.offer_deal || null,
       offer_expires_at: product.offer_expires_at || null,
       category: product.category || null,
