@@ -47,16 +47,27 @@ export async function addToWatchlist(
       prices: {
         normal: product.price,
         loyalty: product.loyalty_price,
+        offer: product.offer_price,
         unit_price: null,
         currency: product.currency,
       },
-      loyalty_type: product.loyalty_label || LOYALTY_LABELS[product.store] || null,
+      // Shortcut: the Worker ignores prices.offer and offer_type until the
+      // Sift side stores them; plain-offer pins show no second price on the
+      // site until then.
+      loyalty_type:
+        product.offer_type === 'loyalty' ? (LOYALTY_LABELS[product.store] ?? null) : null,
+      offer_type: product.offer_type,
       offer_deal: product.offer_deal || null,
       offer_expires_at: product.offer_expires_at || null,
       category: product.category || null,
       category_signals: product.category_signals || null,
       product_url: product.product_url,
-      is_on_offer: !!product.was_price || !!product.offer_expires_at || !!product.loyalty_price || !!product.offer_deal,
+      is_on_offer:
+        !!product.was_price ||
+        !!product.offer_expires_at ||
+        !!product.loyalty_price ||
+        !!product.offer_price ||
+        !!product.offer_deal,
     },
   };
 

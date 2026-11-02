@@ -59,6 +59,7 @@ export function formatProductDump(
     line('CURRENT-PRICE:', fmtPrice(product?.price ?? null), trace.price),
     line('WAS-PRICE:', fmtPrice(product?.was_price ?? null), trace.was),
     line('LOYALTY-PRICE:', fmtPrice(product?.loyalty_price ?? null), trace.loyalty),
+    line('OFFER-PRICE:', fmtPrice(product?.offer_price ?? null), trace.offer),
     line('MULTI-BUY:', product?.offer_deal ?? null, trace.deal),
     line('OFFER-EXPIRY:', product?.offer_expires_at ?? null, trace.expiry),
     line(

@@ -8,6 +8,7 @@ import {
   detectStoreByHost,
   getStoreMatches,
   LOYALTY_LABELS,
+  OFFER_LABELS,
   type StoreConfig,
 } from '../src/lib/store-config.ts';
 
@@ -46,6 +47,9 @@ for (const [key, store] of Object.entries(STORE_CONFIG)) {
     assertSelectors(`${owner}.${field}`, config[field]);
   }
   assertSelectors(`${owner}.imageNoExclude`, config.imageNoExclude);
+  if (config.offerLabel !== undefined) {
+    assert.ok(config.offerLabel.trim().length > 0, `${owner}.offerLabel is empty`);
+  }
 
   if (config.hero) {
     assertSelectors(`${owner}.hero.selectors`, config.hero.selectors);
@@ -84,8 +88,9 @@ assert.deepEqual(LOYALTY_LABELS, {
   Morrisons: 'More Card',
   'Co-op': 'Member',
   Waitrose: 'My Waitrose',
-  ASDA: 'Rollback',
 });
+
+assert.deepEqual(OFFER_LABELS, { ASDA: 'Rollback' });
 
 assert.equal(detectStoreByHost('example.com'), null, 'unknown host resolved to a store');
 

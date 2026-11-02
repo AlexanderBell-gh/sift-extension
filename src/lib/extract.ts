@@ -56,8 +56,8 @@ interface DomResult {
   price: number | null;
   was_price: number | null;
   loyalty_price: number | null;
-  /** "Offer" when loyalty_price is a plain offer, not the store's scheme. */
-  loyalty_label: string | null;
+  offer_price: number | null;
+  offer_type: 'loyalty' | 'offer' | null;
   offer_deal: string | null;
   offer_expires_at: string | null;
   image_url: string | null;
@@ -68,6 +68,7 @@ interface PriceValues {
   price: number | null;
   was: number | null;
   loyalty: number | null;
+  offer: number | null;
 }
 
 interface MergedFields {
@@ -594,13 +595,13 @@ function getLabeledPrice(
   return null;
 }
 
-// ASDA labels "was £4.20 / actual price £4.00". Rollback is loyalty pricing,
-// not a was-strikethrough: regular price is the "was" figure, Rollback price
-// is the loyalty figure, no was_price. Regular items (actual only) fall
+// ASDA labels "was £4.20 / actual price £4.00". Rollback is a plain store
+// offer, not a loyalty scheme: regular price is the "was" figure, Rollback
+// price is the offer figure, no was_price. Regular items (actual only) fall
 // through untouched.
 function applyAsdaRollback(values: PriceValues): void {
   if (values.was == null || values.price == null) return;
-  values.loyalty = values.price;
+  values.offer = values.price;
   values.price = values.was;
   values.was = null;
 }
@@ -741,14 +742,12 @@ function extractFromDom(cfg: StoreConfig, root: ParentNode, fields: MergedFields
   const wasPriceText =
     getLabeledPrice('was', 'was', cfg.priceContainer, priceScope) ||
     getText('was', fields.was, priceScope);
-  const loyaltyPriceText =
-    getText('loyalty', fields.loyaltyPrice, priceScope) || getLoyaltyPriceByPattern(priceScope);
-  // Plain "Offer" price fills the loyalty slot only when no loyalty scheme matched.
-  let loyaltyLabel: string | null = null;
-  if (!loyaltyPriceText && cfg.offerPrice) {
-    const offerPriceText = getText('loyalty', cfg.offerPrice, priceScope);
-    if (offerPriceText) loyaltyLabel = cfg.offerPriceLabel ?? null;
-  }
+  const loyaltyPriceText = cfg.loyalty
+    ? getText('loyalty', fields.loyaltyPrice, priceScope) || getLoyaltyPriceByPattern(priceScope)
+    : null;
+  // Plain "Offer" price only when no loyalty scheme matched.
+  const offerPriceText =
+    !loyaltyPriceText && cfg.offerPrice ? getText('offer', cfg.offerPrice, priceScope) : null;
 
   const imageUrl =
     getAttr('image', cfg.imageNoExclude ?? [], 'src', root, true) ||
@@ -759,6 +758,7 @@ function extractFromDom(cfg: StoreConfig, root: ParentNode, fields: MergedFields
     price: parsePrice(priceText),
     was: parsePrice(wasPriceText),
     loyalty: parsePrice(loyaltyPriceText),
+    offer: parsePrice(offerPriceText),
   };
 
   applyMode(cfg, priceScope, values);
@@ -766,20 +766,24 @@ function extractFromDom(cfg: StoreConfig, root: ParentNode, fields: MergedFields
   // Loyalty duplicating the regular price is a false positive. Null it.
   if (values.loyalty != null && values.loyalty === values.price) {
     values.loyalty = null;
-    loyaltyLabel = null;
     clearTrace('loyalty');
+  }
+  if (values.offer != null && values.offer === values.price) {
+    values.offer = null;
+    clearTrace('offer');
   }
   // Same for a was price equal to the current price: plain-offer containers
   // (Sainsbury's contextual price) echo the current price when not on offer.
   if (values.was != null && values.was === values.price) values.was = null;
   // Loyalty offers echo the loyalty figure in the was container
   // (Sainsbury's contextual price); a strikethrough never equals loyalty.
-  if (values.was != null && values.was === values.loyalty) {
+  if (values.was != null && (values.was === values.loyalty || values.was === values.offer)) {
     values.was = null;
     clearTrace('was');
   }
 
-  const hasOfferSignal = values.was != null || values.loyalty != null || deal != null;
+  const hasOfferSignal =
+    values.was != null || values.loyalty != null || values.offer != null || deal != null;
   const offerExpiresAt =
     (cfg.expiry ? resolveExpiry(cfg.expiry, scopes, hasOfferSignal) : null) ||
     alert?.expiry ||
@@ -790,7 +794,8 @@ function extractFromDom(cfg: StoreConfig, root: ParentNode, fields: MergedFields
     price: values.price,
     was_price: values.was,
     loyalty_price: values.loyalty,
-    loyalty_label: loyaltyLabel,
+    offer_price: values.offer,
+    offer_type: values.loyalty != null ? 'loyalty' : values.offer != null ? 'offer' : null,
     offer_deal: deal,
     offer_expires_at: offerExpiresAt,
     image_url: imageUrl,
@@ -832,14 +837,19 @@ function runExtraction(traceEnabled: boolean): RunResult | null {
 
   // JSON-LD priceValidUntil only counts when DOM shows an offer.
   // Stops stale / template expiry leaking onto regular items.
-  const domHasOffer = dom.was_price != null || dom.loyalty_price != null || dom.offer_deal != null;
+  const domHasOffer =
+    dom.was_price != null ||
+    dom.loyalty_price != null ||
+    dom.offer_price != null ||
+    dom.offer_deal != null;
   const offerExpiresAt = dom.offer_expires_at ?? (domHasOffer ? jsonLd?.offer_expires_at ?? null : null);
 
   const product: ExtractedProduct = {
     name,
     price: dom.price ?? jsonLd?.price ?? null,
     loyalty_price: dom.loyalty_price ?? null,
-    loyalty_label: dom.loyalty_label ?? null,
+    offer_price: dom.offer_price ?? null,
+    offer_type: dom.offer_type,
     was_price: dom.was_price ?? null,
     offer_deal: dom.offer_deal ?? null,
     offer_expires_at: offerExpiresAt,

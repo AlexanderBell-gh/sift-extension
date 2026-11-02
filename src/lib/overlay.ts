@@ -1,7 +1,7 @@
 import type { ExtractedProduct } from '../types';
 import { extractProduct, hasProductPageSignal } from './extract';
 import { addToWatchlist } from './sift-api';
-import { detectStoreByHost, LOYALTY_LABELS } from './store-config';
+import { detectStoreByHost, LOYALTY_LABELS, OFFER_LABELS } from './store-config';
 import overlayCss from './overlay.css?inline';
 
 const SIFT_LOGO = `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -217,9 +217,14 @@ async function renderOverlay(product: ExtractedProduct) {
   shadowRoot.appendChild(style);
 
   const storeColor = STORE_COLORS[product.store];
-  const loyaltyLabel = product.loyalty_label || LOYALTY_LABELS[product.store] || 'Loyalty';
-  // "Offer" is a plain store offer, not the loyalty scheme.
-  const loyaltyColor = loyaltyLabel === 'Offer' ? '#d50000' : storeColor;
+  const isOffer = product.offer_type === 'offer';
+  const secondLabel = isOffer
+    ? OFFER_LABELS[product.store] || 'Offer'
+    : LOYALTY_LABELS[product.store] || 'Loyalty';
+  const secondPrice = isOffer ? product.offer_price : product.loyalty_price;
+  // Generic plain offers get the offer red; a store-named offer (ASDA
+  // Rollback) keeps its store colour.
+  const secondColor = isOffer && !OFFER_LABELS[product.store] ? '#d50000' : storeColor;
   const hasMultiBuy = !!product.offer_deal;
 
   const priceHtml = product.price != null
@@ -230,8 +235,8 @@ async function renderOverlay(product: ExtractedProduct) {
     ? `<span class="sift-price-was">£${product.was_price.toFixed(2)}</span>`
     : '';
 
-  const loyaltyHtml = !hasMultiBuy && product.loyalty_price != null
-    ? `<span class="sift-price-loyalty"${loyaltyColor ? ` style="color:${loyaltyColor}"` : ''}>${loyaltyLabel} £${product.loyalty_price.toFixed(2)}</span>`
+  const loyaltyHtml = !hasMultiBuy && secondPrice != null
+    ? `<span class="sift-price-loyalty"${secondColor ? ` style="color:${secondColor}"` : ''}>${secondLabel} £${secondPrice.toFixed(2)}</span>`
     : '';
 
   const dealHtml = product.offer_deal

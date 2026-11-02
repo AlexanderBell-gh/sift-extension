@@ -33,9 +33,9 @@ export interface StoreConfig {
   matches: string[];
   loyalty?: string;
   mode?: StoreMode;
-  /** Plain "Offer" price (no loyalty scheme): same loyalty slot, own label. */
+  /** Plain store offer price (no scheme): fills the offer slot. */
   offerPrice?: string[];
-  offerPriceLabel?: string;
+  offerLabel?: string;
   /** Hero price container candidates, scored so the offer block wins over price-only copies. */
   hero?: { selectors: string[]; score: HeroScore };
   title?: string[];
@@ -251,7 +251,6 @@ export const STORE_CONFIG: Record<string, StoreConfig> = {
     ],
     // Plain Sainsbury's "Offer" price (red, no Nectar scheme) — second price slot.
     offerPrice: ['[class*="ds-c-display-2"]'],
-    offerPriceLabel: 'Offer',
     // Plain-offer items: the regular price sits in the contextual container.
     was: [
       '[data-testid="gw-product-contextual-price"]',
@@ -284,19 +283,11 @@ export const STORE_CONFIG: Record<string, StoreConfig> = {
     logo: '/ASDA_Logo.svg',
     hosts: ['asda.com'],
     matches: ['https://www.asda.com/groceries/*'],
-    loyalty: 'Rollback',
     mode: 'asda-rollback',
+    offerLabel: 'Rollback',
     priceContainer: '[data-testid="txt-pdp-product-price"]',
     title: ['h1', '[data-testid="txt-pdp-product-name"]'],
     image: ['img[data-testid="img"]', '.product-image img', 'img[data-auto="product-image"]'],
-    loyaltyPrice: [
-      '[data-testid="contextual-price-text"]',
-      '[class*="asda-price"]',
-      '[data-testid*="asda-price"]',
-      '[data-testid*="reduced"]',
-      '[class*="price-lock"]',
-      '[data-testid*="price-lock"]',
-    ],
     was: ['[data-auto="was-price"]', '.price--was', '.product-price--previous', '[data-testid="was-price"]'],
   },
 
@@ -409,4 +400,8 @@ export function getStoreMatches(): string[] {
 
 export const LOYALTY_LABELS: Record<string, string> = Object.fromEntries(
   Object.values(STORE_CONFIG).flatMap((store) => (store.loyalty ? [[store.name, store.loyalty]] : []))
+);
+
+export const OFFER_LABELS: Record<string, string> = Object.fromEntries(
+  Object.values(STORE_CONFIG).flatMap((store) => (store.offerLabel ? [[store.name, store.offerLabel]] : []))
 );
