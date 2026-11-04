@@ -245,6 +245,26 @@ function getPriceText(
   return null;
 }
 
+// Typography-class selectors also match unit and multibuy text ("£17.05/kg",
+// "£13.75 for 2", "Save 25%"), so only accept a candidate parsePrice() can read.
+const UNIT_PRICE_RE = /£\s*\d+\.?\d*\s*\/\s*(?:kg|100\s?g|litre|l)\b/gi;
+const MULTIBUY_RE = /\d+\s*for\s*£?\s*\d/i;
+
+function getCleanPriceText(field: string, selectors: string[], root: ParentNode): string | null {
+  for (const sel of selectors) {
+    for (const el of root.querySelectorAll<HTMLElement>(sel)) {
+      if (isExcluded(el)) continue;
+      const text = el.textContent?.trim();
+      if (!text || MULTIBUY_RE.test(text)) continue;
+      const cleaned = text.replace(UNIT_PRICE_RE, '').trim();
+      if (!cleaned || parsePrice(cleaned) == null) continue;
+      markTrace(field, sel);
+      return cleaned;
+    }
+  }
+  return null;
+}
+
 const LOYALTY_PATTERNS = [
   /(?:nectar|clubcard|member|loyalty|more\s*card|partner)\s*(?:price|saving)?[:\s]*£?\s*(\d+\.?\d*)/i,
   /£\s*(\d+\.?\d*)\s*(?:with|when you use|using)\s*(?:nectar|clubcard|member|loyalty)/i,
@@ -747,7 +767,9 @@ function extractFromDom(cfg: StoreConfig, root: ParentNode, fields: MergedFields
     : null;
   // Plain "Offer" price only when no loyalty scheme matched.
   const offerPriceText =
-    !loyaltyPriceText && cfg.offerPrice ? getText('offer', cfg.offerPrice, priceScope) : null;
+    !loyaltyPriceText && cfg.offerPrice
+      ? getCleanPriceText('offer', cfg.offerPrice, priceScope)
+      : null;
 
   const imageUrl =
     getAttr('image', cfg.imageNoExclude ?? [], 'src', root, true) ||

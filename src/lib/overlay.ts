@@ -231,7 +231,8 @@ async function renderOverlay(product: ExtractedProduct) {
     ? `<span class="sift-price-current">£${product.price.toFixed(2)}</span>`
     : '';
 
-  const wasHtml = product.was_price != null
+  // Loyalty items read CURRENT + Nectar only; the was slot is noise there.
+  const wasHtml = product.was_price != null && product.offer_type !== 'loyalty'
     ? `<span class="sift-price-was">£${product.was_price.toFixed(2)}</span>`
     : '';
 
