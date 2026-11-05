@@ -18,7 +18,7 @@ The button appears only on product pages (detected via JSON-LD Product data or n
 
 The extension popup is a settings panel: click the extension icon → configure overlay position (Bottom Left, Bottom Right, Top Left, Top Right), open your Watchlist, or sign out.
 
-Captured per product: single price, loyalty price (Clubcard/Nectar/Rollback/etc.), previous ("was") price, offer expiry, category, and deal terms (multi-buy "Any 3 for £12", meal deals "Meal Deal for £15.00 with Nectar"). Long deal text is cleaned at source (strips `- Selected ...` and `- Cheapest Product Free` suffixes). Deals show as a pill with CSS truncation and full-text tooltip, and the loyalty line tints to the store brand color for Sainsbury's, Tesco, ASDA, Morrisons, and M&S (orange default for other stores); when a deal term is present, items show the single price with the deal pill instead of a per-unit loyalty line.
+Captured per product: regular price, loyalty price (Clubcard/Nectar/More Card/Member/My Waitrose), plain offer price (including ASDA Rollback), previous ("was") price, offer expiry, category, and deal terms (multi-buy "Any 3 for £12", meal deals "Meal Deal for £15.00 with Nectar"). Long deal text is cleaned at source (strips `- Selected ...` and `- Cheapest Product Free` suffixes). Deals show as a pill with CSS truncation and full-text tooltip. The second price line names which slot is set: loyalty items tint to the store brand colour and hide the was-price; plain offers print an offer label in red; ASDA Rollback keeps its store colour. When a deal term is present, items show the single price with the deal pill instead of a per-unit second price.
 
 ## Supported Stores
 
@@ -51,6 +51,10 @@ pnpm run check  # store registry asserts (node scripts/check-config.ts)
 
 Output: `.output/chrome-mv3/`
 
+### Debugging extraction
+
+Open DevTools on a store page → console context **Sift** → `__siftDump()`. It prints every extracted field plus the selector that matched. Add `?sift_debug=1` to the URL, or set `localStorage.sift_debug = '1'`, to auto-print the same dump on each extraction. Selectors live in `src/lib/store-config.ts`; `pnpm run check` asserts the registry before you reload the extension.
+
 ## Permissions
 
 - `activeTab` — access current tab's product data
@@ -61,8 +65,9 @@ Output: `.output/chrome-mv3/`
 
 ## Auth
 
-- **Login:** username + password via Sift API
-- **Token stored** in `chrome.storage.local` as `sift_token`
+- **Token sync:** sign in on `siftsearch.pages.dev`; the site hands the token to the extension, which stores it in `chrome.storage.local` as `sift_token`.
+- **Popup fallback:** with no stored token, the popup asks an open Sift tab for `localStorage.auth_token` and shows a login prompt if none exists.
+- **Sign out:** removes `sift_token`.
 
 ## Trial Users
 
