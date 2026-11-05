@@ -61,6 +61,6 @@ WXT 0.21 + TypeScript 7 + pnpm → Chrome MV3. Backend is the Sift Worker (`sift
 
 ## Docs (user-triggered)
 
-- On **"finish up and update docs"** update `RECENT.md`, `ARCHITECTURE.md` (fix anything stale, ~200 lines), `README.md` only for new features / `.env` keys / commands, and `AGENTS.md` keep lean & for sweeping changes only.
+- On **"finish up and update docs"** update `RECENT.md`, `ARCHITECTURE.md` (fix anything stale, ~175 lines), `README.md` only for new features / `.env` keys / commands, and `AGENTS.md` keep lean & for sweeping changes only.
 - Location: `RECENT.md` + `ARCHITECTURE.md` in `/home/wsl/Repositories/markdowns/sift-markdowns/extension`; `README.md` in the repo root.
 - **Stop after here.** Never commit; report the change and suggest a commit message (`feat:`, `fix:`, `chore:`, `polish:`).
