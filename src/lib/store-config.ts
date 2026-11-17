@@ -353,15 +353,6 @@ export const STORE_CONFIG: Record<string, StoreConfig> = {
     matches: ['https://www.lidl.co.uk/*'],
   },
 
-  coop: {
-    id: 'coop',
-    name: 'Co-op',
-    logo: '/Co-op_Logo.svg',
-    hosts: ['coop.co.uk'],
-    matches: ['https://www.coop.co.uk/*'],
-    loyalty: 'Member',
-  },
-
   waitrose: {
     id: 'waitrose',
     name: 'Waitrose',

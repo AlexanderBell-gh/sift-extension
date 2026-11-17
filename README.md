@@ -30,7 +30,7 @@ Extracts product data from store pages and adds to your Sift watchlist. The exte
 
 ## Usage
 
-The overlay shows: regular price, loyalty price (Clubcard/Nectar/More Card/Member/My Waitrose), plain offer price (including ASDA Rollback), previous "was" price, offer expiry, category, and deal terms (multi‑buy "Any 3 for £12", meal deals "Meal Deal for £15.00 with Nectar"). Long deal text is cleaned at source; the pill truncates with a full‑text tooltip. The second price line names which slot is set: loyalty items tint to the store brand colour and hide the was‑price; plain offers print an offer label in red; ASDA Rollback keeps its store colour.
+The overlay shows: regular price, loyalty price (Clubcard/Nectar/More Card/My Waitrose), plain offer price (including ASDA Rollback), previous "was" price, offer expiry, category, and deal terms (multi‑buy "Any 3 for £12", meal deals "Meal Deal for £15.00 with Nectar"). Long deal text is cleaned at source; the pill truncates with a full‑text tooltip. The second price line names which slot is set: loyalty items tint to the store brand colour and hide the was‑price; plain offers print an offer label in red; ASDA Rollback keeps its store colour.
 
 **Popup:** click the extension icon → configure overlay position (Bottom Left/Right, Top Left/Right), open your Watchlist, or sign out.
 
@@ -45,7 +45,6 @@ The overlay shows: regular price, loyalty price (Clubcard/Nectar/More Card/Membe
 | M&S | Full | Multi‑buy offers (no expiry) |
 | Aldi | Partial | — |
 | Lidl | Partial | — |
-| Co-op | Partial | Member price |
 | Waitrose | Partial | My Waitrose price |
 | Iceland | Partial | — |
 

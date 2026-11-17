@@ -81,12 +81,12 @@ for (const [key, store] of Object.entries(STORE_CONFIG)) {
 const matches = getStoreMatches();
 assert.ok(matches.length > 0, 'getStoreMatches() is empty');
 assert.ok(!matches.some((m) => m.includes('ocado')), 'Ocado is still in the store matches');
+assert.ok(!matches.some((m) => m.includes('coop')), 'Co-op is still in the store matches');
 
 assert.deepEqual(LOYALTY_LABELS, {
   Tesco: 'Clubcard',
   "Sainsbury's": 'Nectar',
   Morrisons: 'More Card',
-  'Co-op': 'Member',
   Waitrose: 'My Waitrose',
 });
 
